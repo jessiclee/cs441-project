@@ -2,6 +2,7 @@
 
 import socket
 import struct
+import threading
 
 IDS = {
     "N1": (0x1A,  b'N1'),
@@ -16,6 +17,21 @@ IP = 0x1A
 MAC = b"N1"
 MAX_LEN = 256
 
+def listen_for_messages(conn):
+    while True:
+        data = conn.recv(1024)
+        ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
+        if ipdst == IP:
+            print("recieved message from:", hex(ipsrc))
+            print("message is:", data[9:])
+            if protocol == 1:
+                break
+        else:
+            print("recieved message from:", hex(ipdst))
+            print("drop packet, not for me")
+        if not data:
+            break
+
 def create_packet(message, ipdest, mac, length):
     frame = struct.pack('!2s2sB', MAC, mac, length) + message
     print("frame created:", frame)
@@ -25,6 +41,12 @@ def create_packet(message, ipdest, mac, length):
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
+    
+    #thread to listen for messages
+    listener_thread = threading.Thread(target=listen_for_messages, args=(s,), daemon=True)
+    listener_thread.start()
+
+    #main function where there is a prompt to send messages
     while True: 
         while True:
             message = input("Enter message: \n").encode('utf-8')
@@ -34,16 +56,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 print ("message too long, needs to be less than" + MAX_LEN + "try again!")
             else:
                 break
-
+        
         dest = input("Who do you want to send it to?: \n")
         try:
             node = IDS[dest]
             packet = create_packet(message, node[0], node[1], length)
             s.sendall(packet)
-            data = s.recv(1024)
-            print(f"Received {data!r}")
         except KeyError:
             print("sender not found, back to begining")
             pass
-        
-       
