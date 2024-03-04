@@ -14,7 +14,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         while True:
             data = conn.recv(1024)
             msg = data.decode()
-            message = msg[13:]
+            message = msg[12:]
             print(message)
             if not data:
                 break
