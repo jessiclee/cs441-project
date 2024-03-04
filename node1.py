@@ -1,5 +1,3 @@
-# echo-client.py
-
 import socket
 import struct
 import threading
@@ -27,7 +25,7 @@ def listen_for_messages(conn):
             if protocol == 1:
                 break
         else:
-            print("recieved message from:", hex(ipdst))
+            print("recieved message for:", hex(ipdst))
             print("drop packet, not for me")
         if not data:
             break
