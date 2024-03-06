@@ -14,38 +14,45 @@ PORT = 65432  # The port used by the server
 IP = 0x1A
 MAC = b"N1"
 MAX_LEN = 256
+exit_flag = False
 
-def listen_for_messages(conn):
-    while True:
-        data = conn.recv(1024)
-        ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
-        if ipdst == IP:
-            print("recieved message from:", hex(ipsrc))
-            print("message is:", data[9:])
-            if protocol == 1:
-                break
-        else:
-            print("recieved message for:", hex(ipdst))
-            print("drop packet, not for me")
-        if not data:
-            break
 
-def create_packet(message, ipdest, mac, length):
+def create_packet(message, ipdest, mac, protocol, length):
     frame = struct.pack('!2s2sB', MAC, mac, length) + message
     print("frame created:", frame)
-    packet = struct.pack('!BBBB', IP, ipdest, 0, length+5) + frame
+    packet = struct.pack('!BBBB', IP, ipdest, protocol, length+5) + frame
     print("final packet:", packet)
     return packet
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.connect((HOST, PORT))
-    
-    #thread to listen for messages
-    listener_thread = threading.Thread(target=listen_for_messages, args=(s,), daemon=True)
-    listener_thread.start()
+def listen_for_messages(conn):
+    global exit_flag
+    while True:
+        try:
+            data = conn.recv(1024)
+            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
+            if ipdst == IP:
+                print("recieved message from:", hex(ipsrc))
+                print("message is:", data[9:])
+                if protocol == 1:
+                    exit_flag = True
+                    break
+                elif protocol == 0:
+                    macsrc, macdst, leng = struct.unpack('!2s2sB', data[4:9])
+                    packet = create_packet(data[9:], ipsrc, macsrc, 3, leng)
+                    print("proto 0, sending back")
+                    conn.sendall(packet)
+            else:
+                print("recieved message from:", hex(ipdst))
+                print("drop packet, not for me")
+            if not data:
+                break
+        except ConnectionResetError:
+            print("connection closed")
+            exit_flag = True
+            break
 
-    #main function where there is a prompt to send messages
-    while True: 
+def send_messages(conn):
+    while not exit_flag: 
         while True:
             message = input("Enter message: \n").encode('utf-8')
             length = len(message)
@@ -54,12 +61,29 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 print ("message too long, needs to be less than" + MAX_LEN + "try again!")
             else:
                 break
-        
+        proto = input("Choose protocol: \n")
         dest = input("Who do you want to send it to?: \n")
         try:
             node = IDS[dest]
-            packet = create_packet(message, node[0], node[1], length)
-            s.sendall(packet)
+            packet = create_packet(message, node[0], node[1], int(proto), length)
+            conn.sendall(packet)
         except KeyError:
             print("sender not found, back to begining")
             pass
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect((HOST, PORT))
+    
+    #thread to listen for messages
+    listener_thread = threading.Thread(target=listen_for_messages, args=(s,), daemon=True)
+    listener_thread.start()
+
+    #thread to send messages
+    sending_thread = threading.Thread(target=send_messages, args=(s,), daemon=True)
+    sending_thread.start()
+
+    #main function to keep it running until it is killed
+    while not exit_flag:
+        continue
+
+s.close()

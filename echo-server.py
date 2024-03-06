@@ -56,10 +56,16 @@ def handle_packet(data, src_address, dst_address):
 
 def receive_packets(interface_socket):
     while True:
-        data = interface_socket.recv(1024)
-        ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
-        print(f"Received packet from {hex(ipsrc)}: {data}")
-        threading.Thread(target=handle_packet, args=(data, ipsrc, ipdst)).start()
+        try:
+            data = interface_socket.recv(1024)
+            if not data:
+                break
+            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
+            print(f"Received packet from {hex(ipsrc)}: {data}")
+            threading.Thread(target=handle_packet, args=(data, ipsrc, ipdst)).start()
+        except ConnectionResetError:
+            print("connection closed")
+            break
 
 while (n1 == None):
     client, address = s1.accept()
