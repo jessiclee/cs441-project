@@ -40,7 +40,11 @@ def create_ether_frame(data, srcmac, dstmac, length):
     packet = struct.pack('!2s2sB', srcmac, dstmac, length+4) + data
     return packet
 
-def handle_ip_packet(data, interf):
+def local_broadcast(data):
+    n2.sendall(data)
+    n3.sendall(data)
+
+def handle_ip_packet(data, interf, local):
     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
     try:
         if interf == 1:
@@ -72,9 +76,11 @@ def receive_packets(interface_socket):
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
             print(f"Received packet from {macsrc}: {data}")
             if macdst == MAC1:
-                threading.Thread(target=handle_ip_packet, args=(data[5:], 2)).start()
+                threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 2,)).start()
             elif macdst == MAC2:
-                threading.Thread(target=handle_ip_packet, args=(data[5:], 1)).start()
+                threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 1)).start()
+            elif macdst in R2_IDS.values():
+                threading.Thread(target=local_broadcast, args=(data, )).start()
         except ConnectionResetError:
             print("connection closed")
             break

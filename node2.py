@@ -37,6 +37,7 @@ def listen_for_messages(conn):
                     exit_flag = True
                     break
                 elif protocol == 0:
+                    print(macsrc)
                     packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
                     print("proto 0, sending back")
                     conn.sendall(packet)
