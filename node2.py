@@ -3,7 +3,7 @@ import struct
 import threading
 
 IDS = {
-    "N1": (0x1A,  b'N1'),
+    "N1": (0x1A,  b'R2'),
     "N2": (0x2A, b'N2'),
     "N3": (0x2B, b'N3')
     # Add more mappings as needed
@@ -17,9 +17,9 @@ MAX_LEN = 256
 exit_flag = False
 
 def create_packet(message, ipdest, mac, protocol, length):
-    frame = struct.pack('!2s2sB', MAC, mac, length) + message
-    print("frame created:", frame)
-    packet = struct.pack('!BBBB', IP, ipdest, protocol, length+5) + frame
+    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
+    print("ip pack created:", ippack)
+    packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     print("final packet:", packet)
     return packet
 
@@ -28,20 +28,20 @@ def listen_for_messages(conn):
     while True:
         try:
             data = conn.recv(1024)
-            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
-            if ipdst == IP:
-                print("recieved message from:", hex(ipsrc))
+            macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+            if macdst == MAC:
+                print("recieved message from: ", macsrc, " unpack ip packet...")
+                ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print("message is:", data[9:])
                 if protocol == 1:
                     exit_flag = True
                     break
                 elif protocol == 0:
-                    macsrc, macdst, leng = struct.unpack('!2s2sB', data[4:9])
-                    packet = create_packet(data[9:], ipsrc, macsrc, 3, leng)
+                    packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
                     print("proto 0, sending back")
                     conn.sendall(packet)
             else:
-                print("recieved message from:", hex(ipdst))
+                print("recieved message is for:", macdst, " from ", macsrc)
                 print("drop packet, not for me")
             if not data:
                 break

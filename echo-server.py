@@ -11,7 +11,7 @@ MAC1 = b"R1"
 HOST2 = "127.0.1.0"  # Standard loopback interface address (localhost)
 PORT2 = 8000  # Port to listen on (non-privileged ports are > 1023)
 IP2 = 0x21
-MAC2 = b"R1"
+MAC2 = b"R2"
 
 R1_IDS = {
     0x1A: b'N1',
@@ -26,11 +26,9 @@ R2_IDS = {
 s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 s1.bind((HOST1, PORT1))
 s1.listen()
-print("s1")
 s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 s2.bind((HOST2, PORT2))
 s2.listen()
-print("s2")
 # s.listen()
 # conn, addr = s.accept()
 n1 = None
@@ -38,21 +36,31 @@ n2 = None
 n3 = None
 msg = None 
 
-def handle_packet(data, src_address, dst_address):
-    if dst_address in R1_IDS:
-        print(f"sending message from {hex(src_address)} to {hex(dst_address)} on interface R1")
-        n1.sendall(data)
-    elif dst_address in R2_IDS:
-        print(f"sending message from {hex(src_address)} to {hex(dst_address)} on interface R2")
-        n2.sendall(data)
-        n3.sendall(data)
-    else:
-        print("something went wrong")
-        print("debugging info:", data)
-        print("src and dst:", src_address, dst_address)
+def create_ether_frame(data, srcmac, dstmac, length):
+    packet = struct.pack('!2s2sB', srcmac, dstmac, length+4) + data
+    return packet
+
+def handle_ip_packet(data, interf):
+    ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
+    try:
+        if interf == 1:
+            dstmac = R1_IDS[ipdst]
+            pack = create_ether_frame(data, MAC1, dstmac, len)
+            print("sending1: ", pack)
+            n1.sendall(pack)
+        elif interf == 2:
+            dstmac = R2_IDS[ipdst]
+            pack = create_ether_frame(data, MAC2, dstmac, len)
+            print("sending2: ", pack)
+            #emulate ethernet broadcast, send to all?
+            n2.sendall(pack)
+            n3.sendall(pack)
+        else:
+            print("something went wrong, info here, ", data, interf)
+    except KeyError:
+        print("something went wrong, ipdst is: ", ipdst)
         print(R1_IDS)
         print(R2_IDS)
-    
 
 def receive_packets(interface_socket):
     while True:
@@ -60,9 +68,13 @@ def receive_packets(interface_socket):
             data = interface_socket.recv(1024)
             if not data:
                 break
-            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
-            print(f"Received packet from {hex(ipsrc)}: {data}")
-            threading.Thread(target=handle_packet, args=(data, ipsrc, ipdst)).start()
+            #unpack ethernet frame and check destination MAC to know which interface to forward to
+            macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+            print(f"Received packet from {macsrc}: {data}")
+            if macdst == MAC1:
+                threading.Thread(target=handle_ip_packet, args=(data[5:], 2)).start()
+            elif macdst == MAC2:
+                threading.Thread(target=handle_ip_packet, args=(data[5:], 1)).start()
         except ConnectionResetError:
             print("connection closed")
             break
@@ -70,6 +82,7 @@ def receive_packets(interface_socket):
 while (n1 == None):
     client, address = s1.accept()
     n1 = client
+    # print(n1)
     print(f"Connected Node1 through {address}")
     threading.Thread(target=receive_packets, args=(n1,), daemon=True).start()
 
@@ -77,14 +90,14 @@ while (n2 == None or n3 == None):
     client, address = s2.accept()
     if(n2 == None):
         n2 = client
+        # print(n2)
         threading.Thread(target=receive_packets, args=(n2,), daemon=True).start()
         print(f"Connected Node2 through {address}")
-        print("Client 2 is online")
     elif(n3 == None):
         n3 = client
+        # print(n3)
         threading.Thread(target=receive_packets, args=(n3,), daemon=True).start()
         print(f"Connected Node3 through {address}")
-        print("Client 3 is online")
 
 
 while msg == None:
