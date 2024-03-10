@@ -47,12 +47,12 @@ def local_broadcast(data):
 def handle_ip_packet(data, interf, local):
     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
     try:
-        if interf == 1:
+        if local == 1:
             dstmac = R1_IDS[ipdst]
             pack = create_ether_frame(data, MAC1, dstmac, len)
             print("sending1: ", pack)
             n1.sendall(pack)
-        elif interf == 2:
+        elif local == 2:
             dstmac = R2_IDS[ipdst]
             pack = create_ether_frame(data, MAC2, dstmac, len)
             print("sending2: ", pack)
@@ -60,7 +60,7 @@ def handle_ip_packet(data, interf, local):
             n2.sendall(pack)
             n3.sendall(pack)
         else:
-            print("something went wrong, info here, ", data, interf)
+            print("something went wrong, info here, ", data, interf, local)
     except KeyError:
         print("something went wrong, ipdst is: ", ipdst)
         print(R1_IDS)
