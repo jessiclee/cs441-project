@@ -8,7 +8,7 @@ PORT1 = 65432  # Port to listen on (non-privileged ports are > 1023)
 IP1 = 0x11
 MAC1 = b"R1"
 
-HOST2 = "127.0.1.0"  # Standard loopback interface address (localhost)
+HOST2 = "localhost"  # Standard loopback interface address (localhost)
 PORT2 = 8000  # Port to listen on (non-privileged ports are > 1023)
 IP2 = 0x21
 MAC2 = b"R2"
@@ -22,7 +22,7 @@ R2_IDS = {
     0x2A: b'N2',
     0x2B: b'N3',
 }
-
+ 
 s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 s1.bind((HOST1, PORT1))
 s1.listen()

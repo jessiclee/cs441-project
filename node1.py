@@ -30,7 +30,7 @@ def listen_for_messages(conn):
             data = conn.recv(1024)
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
             if macdst == MAC:
-                print("recieved message from: ", macsrc, " unpack ip packet...")
+                print("received message from: ", macsrc, " unpack ip packet...")
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print("message is:", data[9:])
                 if protocol == 1:
@@ -41,7 +41,7 @@ def listen_for_messages(conn):
                     print("proto 0, sending back")
                     conn.sendall(packet)
             else:
-                print("recieved message is for:", macdst, " from ", macsrc)
+                print("received message is for:", macdst, " from ", macsrc)
                 print("drop packet, not for me")
             if not data:
                 break

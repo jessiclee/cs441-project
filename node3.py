@@ -11,7 +11,7 @@ IDs = {
 
 BLOCKed = {}
 
-HOST = "127.0.1.0"  # Standard loopback interface address (localhost)
+HOST = "localhost"  # Standard loopback interface address (localhost) *172.0.1.0 doesn't work for me
 PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
 IP = 0x2B
 MAC = b"N3"
@@ -35,7 +35,7 @@ def listen_for_messages(conn):
                 print(f"drop packet, is from {macsrc} which is part of the block list")
                 continue
             elif macdst == MAC:
-                print("recieved message from: ", macsrc, " unpack ip packet...")
+                print("received message from: ", macsrc, " unpack ip packet...")
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print("message is:", data[9:])
                 if protocol == 1:
@@ -47,7 +47,7 @@ def listen_for_messages(conn):
                     print("proto 0, sending back")
                     conn.sendall(packet)
             else:
-                print("recieved message is for:", macdst, " from ", macsrc)
+                print("received message is for:", macdst, " from ", macsrc)
                 print("drop packet, not for me")
             if not data:
                 break
