@@ -41,7 +41,7 @@ def listen_for_messages(conn):
                     break
                 elif protocol == 0:
                     print(macsrc)
-                    packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
+                    packet = create_packet(data[9:], ipsrc, ipdst, macsrc, 3, len)  # 3 is hardcoded bc if 1 it will ping to everyone
                     print("proto 0, sending back")
                     conn.sendall(packet)
             elif ipdst == IDS["N3"][0] and SNIFF == True:
@@ -59,30 +59,30 @@ def listen_for_messages(conn):
 
 def send_messages(conn,action):
     # while not exit_flag:
-        # action = input("What do you want to do?\n 1.Send message\n 2.Send a spoofed message\n")
-        if action =='2':
-            spoofdest = input("Enter the ID that you want to spoof (N1/N3)\n")
-            spoofnode = IDS.get(spoofdest)
-            ipsrc = spoofnode[0]
-        elif action == "1":
-            ipsrc = IP
-        while True:
-            message = input("Enter message: \n").encode('utf-8')
-            length = len(message)
-            print(length)
-            if length > MAX_LEN:
-                print ("message too long, needs to be less than" + MAX_LEN + "try again!")
-            else:
-                break
-        proto = input("Choose protocol: \n")
-        dest = input("Who do you want to send it to?: \n")
-        try:
-            node = IDS[dest]
-            packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
-            conn.sendall(packet)
-        except KeyError:
-            print("sender not found, back to begining")
-            pass
+    # action = input("What do you want to do?\n 1.Send message\n 2.Send a spoofed message\n")
+    if action =='2':
+        spoofdest = input("Enter the ID that you want to spoof (N1/N3)\n")
+        spoofnode = IDS.get(spoofdest)
+        ipsrc = spoofnode[0]
+    elif action == "1":
+        ipsrc = IP
+    while True:
+        message = input("Enter message: \n").encode('utf-8')
+        length = len(message)
+        print(length)
+        if length > MAX_LEN:
+            print ("message too long, needs to be less than" + MAX_LEN + "try again!")
+        else:
+            break
+    proto = input("Choose protocol: \n")
+    dest = input("Who do you want to send it to?: \n")
+    try:
+        node = IDS[dest]
+        packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
+        conn.sendall(packet)
+    except KeyError:
+        print("sender not found, back to begining")
+        pass
 
 
 def do_actions(conn):
