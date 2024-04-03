@@ -36,7 +36,7 @@ def listen_for_messages(conn):
             if macdst == MAC:
                 print("Received message from: ", macsrc)
                 # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                print("Message is:", data[9:])
+                print("Message:", data[9:])
                 if protocol == 1:
                     exit_flag = True
                     break
@@ -49,7 +49,7 @@ def listen_for_messages(conn):
                 print("Intercepted traffic from", macsrc, "to", macdst)
                 print("Message:", data[9:])
             else:
-                print("Received message is for:", macdst, " from ", macsrc)
+                print("Received message is for ", macdst, " from ", macsrc)
                 print("Dropping packet")
             if not data:
                 break
@@ -86,7 +86,7 @@ def send_messages(conn,action):
         if (dest == "N1" or dest == "N3"):
             break
         else:
-            print("Please input a valid node (N1/N3)\n")
+            print("Please input a valid node (N1/N3)")
     try:
         node = IDS[dest]
         packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)

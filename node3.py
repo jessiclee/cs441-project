@@ -20,9 +20,9 @@ exit_flag = False
 
 def create_packet(message, ipdest, mac, protocol, length):
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
-    print("ip pack created:", ippack)
+    print("IP Pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    print("final packet:", packet)
+    print("Final packet:", packet)
     return packet
 
 def val_in_block(val):
@@ -40,27 +40,27 @@ def listen_for_messages(conn):
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
             is_blocked, k = val_in_block(macsrc)
             if is_blocked:
-                print(f"drop packet, is from {k} which is part of the block list")
+                print(f"Dropping packet as sender is in blocked list {k}")
                 continue
             elif macdst == MAC:
-                print("received message from: ", macsrc, " unpack ip packet...")
+                print("Received message from: ", macsrc)
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                print("message is:", data[9:])
+                print("Message:", data[9:])
                 if protocol == 1:
                     exit_flag = True
                     break
                 elif protocol == 0:
                     print(macsrc)
                     packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
-                    print("proto 0, sending back")
+                    print("Protocol 0, sending back")
                     conn.sendall(packet)
             else:
-                print("received message is for:", macdst, " from ", macsrc)
-                print("drop packet, not for me")
+                print("Received message is for ", macdst, " from ", macsrc)
+                print("Dropping packet")
             if not data:
                 break
         except ConnectionResetError:
-            print("connection closed")
+            print("Error: Connection closed")
             exit_flag = True
             break
 
@@ -70,77 +70,77 @@ def send_messages(conn):
             length = len(message)
             print(length)
             if length > MAX_LEN:
-                print ("message too long, needs to be less than" + MAX_LEN + "try again!")
+                print ("Please input a message within the character limit " + MAX_LEN)
             else:
                 break
         while True:
-            proto = input("Choose protocol: ")
+            proto = input("Choose protocol (0/1): ")
             if (proto == "0" or proto == "1"):
                 break
             else:
-                print("Please input 0 (Ping Protocol) or 1 (Kill Protocol)\n")
+                print("Please input a valid protocol, 0 (Ping Protocol) or 1 (Kill Protocol)")
                 
         while True:
-            dest = input("Who do you want to send it to?: ")
+            dest = input("Choose recipient (N1/N2): ")
             if (dest == "N2" or dest == "N1"):
                 break
             else:
-                print("Please input a valid node (N1/N2)\n")
+                print("Please input a valid node (N1/N2)")
         try:
             node = IDs[dest]
             packet = create_packet(message, node[0], node[1], int(proto), length)
             conn.sendall(packet)
         except KeyError:
-            print("sender not found, back to begining")
+            print("Error: Sender not found")
             pass
 
 def manage_firewall():
-    print("Currently accepts packets from the following:\n")
+    print("Firewall currently accepts packets from the following sources:\n")
     print(IDs)
-    print("currently blocks packets from the following:\n")
+    print("Firewall currently blocks packets from the following sources:\n")
     print(BLOCKed)
     while True:
-        choice = input("What do you want to do?\n 0. return to menu \n 1. Block a source\n 2. Unblock a source\n")
+        choice = input("Select action:\n 0. Return to menu \n 1. Block a source\n 2. Unblock a source\n")
         if choice == "0":
             return
         elif choice == '1':
-            choice2 = input("Who do you want to block?\n")
+            choice2 = input("Enter source to block: ")
             if choice2 in IDs:
                 #remove it from the recieving list
                 info = IDs.pop(choice2)
                 #enter it into block list
                 BLOCKed[choice2] = (info[0], info[1])
-                print("updated block list")
+                print("Updated block list")
                 print(BLOCKed)
-                print("updated accept list")
+                print("Updated accept list")
                 print(IDs)
             else: 
-                print(f"{choice2} is not within the list! Try again!")
+                print(f"Error: {choice2} is not in the list")
         elif choice == '2':
-            choice2 = input("Who do you want to unblock?\n")
+            choice2 = input("Enter source to unblock: ")
             if choice2 in BLOCKed:
                 #remove it from the blocklist
                 info = BLOCKed.pop(choice2)
                 #enter it to normal list
                 IDs[choice2] = (info[0], info[1])
-                print("updated block list: ")
+                print("Updated block list")
                 print(BLOCKed)
-                print("updated accept list: ")
+                print("Updated accept list")
                 print(IDs)
             else: 
-                print(f"{choice2} is not within the list! Try again!")
+                print(f"Error: {choice2} is not in the list")
         else: 
-            print("invalid choice :(")
+            print("Error: Invalid choice")
 
 def do_actions(conn):
     while not exit_flag: 
-        action = input("What do you want to do?\n 1.Send message\n 2.Configure firewall\n")
+        action = input("Select action:\n 1. Send message\n 2. Configure firewall\n")
         if action == "1":
             send_messages(conn)
         elif action == "2":
             manage_firewall()
         else:
-            print("invalid choice!")
+            print("Error: Invalid choice")
 
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
