@@ -53,15 +53,26 @@ def listen_for_messages(conn):
 def send_messages(conn):
     while not exit_flag: 
         while True:
-            message = input("Enter message: \n").encode('utf-8')
+            message = input("Enter message: ").encode('utf-8')
             length = len(message)
-            print(length)
+            # print(length)
             if length > MAX_LEN:
                 print ("message too long, needs to be less than" + MAX_LEN + "try again!")
             else:
                 break
-        proto = input("Choose protocol: \n")
-        dest = input("Who do you want to send it to?: \n")
+        while True:
+            proto = input("Choose protocol: ")
+            if (proto == "0" or proto == "1"):
+                break
+            else:
+                print("Please input 0 (Ping Protocol) or 1 (Kill Protocol)\n")
+                
+        while True:
+            dest = input("Who do you want to send it to?: ")
+            if (dest == "N2" or dest == "N3"):
+                break
+            else:
+                print("Please input a valid node (N2/N3)\n")
         try:
             node = IDS[dest]
             packet = create_packet(message, node[0], node[1], int(proto), length)

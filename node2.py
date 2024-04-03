@@ -32,6 +32,7 @@ def listen_for_messages(conn):
             data = conn.recv(1024)
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
             ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+            print(ipsrc, ipdst, protocol, len)
             if macdst == MAC:
                 print("received message from: ", macsrc, " unpack ip packet...")
                 # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
@@ -67,15 +68,25 @@ def send_messages(conn,action):
     elif action == "1":
         ipsrc = IP
     while True:
-        message = input("Enter message: \n").encode('utf-8')
+        message = input("Enter message: ").encode('utf-8')
         length = len(message)
-        print(length)
         if length > MAX_LEN:
             print ("message too long, needs to be less than" + MAX_LEN + "try again!")
         else:
             break
-    proto = input("Choose protocol: \n")
-    dest = input("Who do you want to send it to?: \n")
+    while True:
+        proto = input("Choose protocol: ")
+        if (proto == "0" or proto == "1"):
+            break
+        else:
+            print("Please input 0 (Ping Protocol) or 1 (Kill Protocol)\n")
+            
+    while True:
+        dest = input("Who do you want to send it to?: ")
+        if (dest == "N1" or dest == "N3"):
+            break
+        else:
+            print("Please input a valid node (N1/N3)\n")
     try:
         node = IDS[dest]
         packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
