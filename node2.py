@@ -20,9 +20,9 @@ exit_flag = False
 
 def create_packet(message, ipsrc, ipdest, mac, protocol, length):
     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
-    print("ip pack created:", ippack)
+    print("IP Pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    print("final packet:", packet)
+    print("Final packet:", packet)
     return packet
 
 def listen_for_messages(conn):
@@ -34,27 +34,27 @@ def listen_for_messages(conn):
             ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
             print(ipsrc, ipdst, protocol, len)
             if macdst == MAC:
-                print("received message from: ", macsrc, " unpack ip packet...")
+                print("Received message from: ", macsrc)
                 # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                print("message is:", data[9:])
+                print("Message is:", data[9:])
                 if protocol == 1:
                     exit_flag = True
                     break
                 elif protocol == 0:
                     print(macsrc)
                     packet = create_packet(data[9:], ipsrc, ipdst, macsrc, 3, len)  # 3 is hardcoded bc if 1 it will ping to everyone
-                    print("proto 0, sending back")
+                    print("Protocol 0, sending back")
                     conn.sendall(packet)
             elif ipdst == IDS["N3"][0] and SNIFF == True:
-                print("Intercepted traffic from",macsrc, "to", macdst)
-                print("message is:", data[9:])
+                print("Intercepted traffic from", macsrc, "to", macdst)
+                print("Message:", data[9:])
             else:
-                print("received message is for:", macdst, " from ", macsrc)
-                print("drop packet, not for me")
+                print("Received message is for:", macdst, " from ", macsrc)
+                print("Dropping packet")
             if not data:
                 break
         except ConnectionResetError:
-            print("connection closed")
+            print("Error: Connection closed")
             exit_flag = True
             break
 
@@ -62,7 +62,7 @@ def send_messages(conn,action):
     # while not exit_flag:
     # action = input("What do you want to do?\n 1.Send message\n 2.Send a spoofed message\n")
     if action =='2':
-        spoofdest = input("Enter the ID that you want to spoof (N1/N3)\n")
+        spoofdest = input("Enter the ID that you want to spoof (N1/N3):")
         spoofnode = IDS.get(spoofdest)
         ipsrc = spoofnode[0]
     elif action == "1":
@@ -71,18 +71,18 @@ def send_messages(conn,action):
         message = input("Enter message: ").encode('utf-8')
         length = len(message)
         if length > MAX_LEN:
-            print ("message too long, needs to be less than" + MAX_LEN + "try again!")
+            print ("Please input a message within the character limit " + MAX_LEN)
         else:
             break
     while True:
-        proto = input("Choose protocol: ")
+        proto = input("Choose protocol (0/1): ")
         if (proto == "0" or proto == "1"):
             break
         else:
-            print("Please input 0 (Ping Protocol) or 1 (Kill Protocol)\n")
+            print("Please input a valid protocol, 0 (Ping Protocol) or 1 (Kill Protocol)")
             
     while True:
-        dest = input("Who do you want to send it to?: ")
+        dest = input("Choose recipient (N1/N3): ")
         if (dest == "N1" or dest == "N3"):
             break
         else:
@@ -92,35 +92,35 @@ def send_messages(conn,action):
         packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
         conn.sendall(packet)
     except KeyError:
-        print("sender not found, back to begining")
+        print("Error: Sender not found")
         pass
 
 
 def do_actions(conn):
     while not exit_flag: 
-        action = input("What do you want to do?\n 1.Send message\n 2.Send a spoofed message\n 3.configure sniffing\n")
+        action = input("Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n")
         if action == "1" or action == '2':
             send_messages(conn, action)
         elif action == "3":
             while True:
-                option = input("choose:\n 1.start sniffing\n 2.stop sniffing \n")
+                option = input("Select action:\n 1. Start sniffing\n 2. Stop sniffing \n")
                 global SNIFF
                 if option == "1" and SNIFF == False:
                     SNIFF = True
-                    print("sniffing starts\n")
+                    print("Sniffing started")
                     break
                 elif option == "1" and SNIFF == True:
-                    print("sniffing already started")
+                    print("Sniffing already started")
                     continue
                 elif option == "2" and SNIFF == True:
                     SNIFF = False
-                    print("sniffing stopped")
+                    print("Sniffing stopped")
                     break
                 elif option == "2" and SNIFF == False:
-                    print("sniffing already stopped")
+                    print("Sniffing already stopped")
                     continue
         else:
-            print("invalid choice!")
+            print("Error: Invalid action")
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
