@@ -26,7 +26,7 @@ def create_packet(message, ipsrc, ipdest, mac, protocol, length):
     return packet
 
 def listen_for_messages(conn):
-    # global exit_flag
+    global exit_flag
     while True:
         try:
             data = conn.recv(1024)

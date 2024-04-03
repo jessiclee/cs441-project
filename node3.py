@@ -25,14 +25,22 @@ def create_packet(message, ipdest, mac, protocol, length):
     print("final packet:", packet)
     return packet
 
+def val_in_block(val):
+    for key, value in BLOCKed.items():
+        # Check if the second element of the value matches the given value
+        if value[1] == val:
+            return True, key
+    return False, "NIL"
+
 def listen_for_messages(conn):
     global exit_flag
     while True:
         try:
             data = conn.recv(1024)
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-            if macsrc in BLOCKed:
-                print(f"drop packet, is from {macsrc} which is part of the block list")
+            is_blocked, k = val_in_block(macsrc)
+            if is_blocked:
+                print(f"drop packet, is from {k} which is part of the block list")
                 continue
             elif macdst == MAC:
                 print("received message from: ", macsrc, " unpack ip packet...")
@@ -81,22 +89,37 @@ def manage_firewall():
     print("currently blocks packets from the following:\n")
     print(BLOCKed)
     while True:
-        choice = input("Enter any of the IDs (N1, N2, N3 etc.) to block packets from them or enter 0 to go back to menu")
+        choice = input("What do you want to do?\n 0. return to menu \n 1. Block a source\n 2. Unblock a source\n")
         if choice == "0":
             return
-        elif choice in IDs:
-            #remove it from the recieving list
-            info = IDs.pop(choice)
-            #enter it into block list
-            BLOCKed[info[1]] = info[0]
-            print("updated block list")
-            print(BLOCKed)
-            print("updated accept list")
-            print(IDs)
-            break
-        else:
-            print(f"{choice} is not within the list! Try again!")
-            continue
+        elif choice == '1':
+            choice2 = input("Who do you want to block?\n")
+            if choice2 in IDs:
+                #remove it from the recieving list
+                info = IDs.pop(choice2)
+                #enter it into block list
+                BLOCKed[choice2] = (info[0], info[1])
+                print("updated block list")
+                print(BLOCKed)
+                print("updated accept list")
+                print(IDs)
+            else: 
+                print(f"{choice2} is not within the list! Try again!")
+        elif choice == '2':
+            choice2 = input("Who do you want to unblock?\n")
+            if choice2 in BLOCKed:
+                #remove it from the blocklist
+                info = BLOCKed.pop(choice2)
+                #enter it to normal list
+                IDs[choice2] = (info[0], info[1])
+                print("updated block list: ")
+                print(BLOCKed)
+                print("updated accept list: ")
+                print(IDs)
+            else: 
+                print(f"{choice2} is not within the list! Try again!")
+        else: 
+            print("invalid choice :(")
 
 def do_actions(conn):
     while not exit_flag: 
