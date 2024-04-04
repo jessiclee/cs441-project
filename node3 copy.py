@@ -49,14 +49,14 @@ def listen_for_messages(conn):
             elif macdst == MAC:
                 print("received message from: ", macsrc, " unpack ip packet...")
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                print("message is:", data[9:])
+                print("Ciphertext Message is: ", data[9:])
                 if protocol == 1:
                     exit_flag = True
                     break
                 elif protocol == 0:
                     if key:
                         decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                        print(decrypted_payload)
+                        print("Plaintext Message: ", decrypted_payload)
                         packet = create_packet(decrypted_payload, ipsrc, macsrc, 3, len, key)
                         conn.sendall(packet)
                     else:
