@@ -25,6 +25,13 @@ def create_packet(message, ipsrc, ipdest, mac, protocol, length):
     print("Final packet:", packet)
     return packet
 
+def val_in_dict(val,pos, diction):
+    for key, value in diction.items():
+        # Check if the second element of the value matches the given value
+        if value[pos] == val:
+            return True, key
+    return False, "NIL"
+
 def listen_for_messages(conn):
     global exit_flag
     while True:
@@ -34,7 +41,8 @@ def listen_for_messages(conn):
             ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
             print(ipsrc, ipdst, protocol, len)
             if macdst == MAC:
-                print("Received message from: ", macsrc)
+                exists, source = val_in_dict(ipsrc, 0, IDS)
+                print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                 # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print("Message:", data[9:])
                 if protocol == 1:
@@ -42,7 +50,7 @@ def listen_for_messages(conn):
                     break
                 elif protocol == 0:
                     print(macsrc)
-                    packet = create_packet(data[9:], ipsrc, ipdst, macsrc, 3, len)  # 3 is hardcoded bc if 1 it will ping to everyone
+                    packet = create_packet(data[9:], ipsrc, ipdst, macsrc, 3, len)  # 3 is hardcoded bc if 0 it will ping to everyone
                     print("Protocol 0, sending back")
                     conn.sendall(packet)
             elif ipdst == IDS["N3"][0] and SNIFF == True:

@@ -23,6 +23,13 @@ def create_packet(message, ipdest, mac, protocol, length):
     print("Final packet: ", packet)
     return packet
 
+def val_in_dict(val,pos, diction):
+    for key, value in diction.items():
+        # Check if the second element of the value matches the given value
+        if value[pos] == val:
+            return True, key
+    return False, "NIL"
+
 def listen_for_messages(conn):
     global exit_flag
     while True:
@@ -30,8 +37,9 @@ def listen_for_messages(conn):
             data = conn.recv(1024)
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
             if macdst == MAC:
-                print("Received message from: ", macsrc)
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+                exists, source = val_in_dict(ipsrc, 0, IDS)
+                print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                 print("Message: ", data[9:])
                 if protocol == 1:
                     exit_flag = True
