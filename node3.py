@@ -1,6 +1,7 @@
 import socket
 import struct
 import threading
+import ipsec
 
 IDs = {
     "N1": (0x1A,  b'R2'),
@@ -17,12 +18,16 @@ IP = 0x2B
 MAC = b"N3"
 MAX_LEN = 256
 exit_flag = False
+key = b'kQ\xd41\xdf]\x7f\x14\x1c\xbe\xce\xcc\xf7\x9e\xdf=\xd8a\xc3\xb4\x06\x9f\x0b\x11f\x1a>\xef\xac\xbb\xa9\x18'
 
-def create_packet(message, ipdest, mac, protocol, length):
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
-    print("IP Pack created:", ippack)
+
+def create_packet(message, ipdest, mac, protocol, length, key):
+    esp_packet = ipsec.encrypt_payload(message, key)
+    # print(esp_packet)
+    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
+    # print("ip pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    print("Final packet:", packet)
+    # print("final packet:", packet)
     return packet
 
 def val_in_dict(val,pos, diction):
@@ -44,17 +49,27 @@ def listen_for_messages(conn):
                 continue
             elif macdst == MAC:
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+<<<<<<< HEAD
                 exists, source = val_in_dict(ipsrc, 0, IDs)
                 print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                 print("Message:", data[9:])
+=======
+                print("Ciphertext Message is: ", data[9:])
+>>>>>>> e6d030a00a39079da30b7edc097337b7002b9e9e
                 if protocol == 1:
                     exit_flag = True
                     break
                 elif protocol == 0:
-                    print(macsrc)
-                    packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
-                    print("Protocol 0, sending back")
-                    conn.sendall(packet)
+                    if key:
+                        decrypted_payload = ipsec.decrypt_packet(data[9:], key)
+                        print("Plaintext Message: ", decrypted_payload)
+                        packet = create_packet(decrypted_payload, ipsrc, macsrc, 3, len, key)
+                        conn.sendall(packet)
+                    else:
+                        # packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
+                        # print("proto 0, sending back")
+                        # conn.sendall(packet)
+                        print("Decryption Failed")
             else:
                 print("Received message is for ", macdst, " from ", macsrc)
                 print("Dropping packet")
@@ -89,7 +104,7 @@ def send_messages(conn):
                 print("Please input a valid node (N1/N2)")
         try:
             node = IDs[dest]
-            packet = create_packet(message, node[0], node[1], int(proto), length)
+            packet = create_packet(message, node[0], node[1], int(proto), length, key)
             conn.sendall(packet)
         except KeyError:
             print("Error: Sender not found")
