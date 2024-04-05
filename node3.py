@@ -49,13 +49,7 @@ def listen_for_messages(conn):
                 continue
             elif macdst == MAC:
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-<<<<<<< HEAD
-                exists, source = val_in_dict(ipsrc, 0, IDs)
-                print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
-                print("Message:", data[9:])
-=======
                 print("Ciphertext Message is: ", data[9:])
->>>>>>> e6d030a00a39079da30b7edc097337b7002b9e9e
                 if protocol == 1:
                     exit_flag = True
                     break

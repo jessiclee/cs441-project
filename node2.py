@@ -18,6 +18,7 @@ MAX_LEN = 256
 SNIFF = False
 exit_flag = False
 key = b'kQ\xd41\xdf]\x7f\x14\x1c\xbe\xce\xcc\xf7\x9e\xdf=\xd8a\xc3\xb4\x06\x9f\x0b\x11f\x1a>\xef\xac\xbb\xa9\x18'
+attack_num = 0
 
 
 def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
@@ -53,12 +54,6 @@ def listen_for_messages(conn):
                     exit_flag = True
                     break
                 elif protocol == 0:
-<<<<<<< HEAD
-                    print(macsrc)
-                    packet = create_packet(data[9:], ipsrc, ipdst, macsrc, 3, len)  # 3 is hardcoded bc if 0 it will ping to everyone
-                    print("Protocol 0, sending back")
-                    conn.sendall(packet)
-=======
                     if key:
                         decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                         print("Plaintext Message: ", decrypted_payload)
@@ -69,7 +64,6 @@ def listen_for_messages(conn):
                         # print("proto 0, sending back")
                         # conn.sendall(packet)
                         print("Decryption Failed")
->>>>>>> e6d030a00a39079da30b7edc097337b7002b9e9e
             elif ipdst == IDS["N3"][0] and SNIFF == True:
                 print("Intercepted traffic from", macsrc, "to", macdst)
                 print("Message:", data[9:])
@@ -120,10 +114,19 @@ def send_messages(conn,action):
         print("Error: Sender not found")
         pass
 
+def dos_attack(conn, target, attack_limit):
+    global attack_num
+    node = IDS[target]
+    attack_message = "DOS attack".encode('utf-8')
+    while attack_num < attack_limit:
+        packet = create_packet(attack_message, IP, node[0], node[1], 0, len(attack_message), key)
+        conn.sendall(packet)
+        attack_num += 1
+        print("DOS attack count:", attack_num, "Thread ID:", threading.get_ident())
 
 def do_actions(conn):
     while not exit_flag: 
-        action = input("Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n")
+        action = input("Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Perform DOS attack\n")
         if action == "1" or action == '2':
             send_messages(conn, action)
         elif action == "3":
@@ -144,6 +147,19 @@ def do_actions(conn):
                 elif option == "2" and SNIFF == False:
                     print("Sniffing already stopped")
                     continue
+        elif action == "4":
+            target = str(input("Enter target (N1/N3): "))
+            if target == "N1" or target == "N3":
+                thread_count = 10 # to edit: number of threads to run concurrently
+                attack_limit = 50 # to edit: number of packets to send
+                for i in range(thread_count):
+                    thread = threading.Thread(target=dos_attack, args=(conn, target, attack_limit))
+                    thread.start()
+                while attack_num < attack_limit:
+                    pass
+                print("DOS attack complete")
+            else:
+                print("Error: Invalid target")
         else:
             print("Error: Invalid action")
 
