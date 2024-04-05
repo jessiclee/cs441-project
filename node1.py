@@ -16,8 +16,13 @@ IP = 0x1A
 MAC = b"N1"
 MAX_LEN = 256
 exit_flag = False
-key = b'kQ\xd41\xdf]\x7f\x14\x1c\xbe\xce\xcc\xf7\x9e\xdf=\xd8a\xc3\xb4\x06\x9f\x0b\x11f\x1a>\xef\xac\xbb\xa9\x18'
-
+wrong_key = b'\xd8c\xa6\xdd\r\xf5@\xd6&Y\x96\xc1\xd0\xf6d\x87\xe81\x07\x0c\xde\xbbN"\xa4\xf3\x9c\x83\x9d5t3'
+keys = {
+    0x2A: b'\xed\x08\xb6a\x02\xd9\xd8\xf9\xa4\xba\xac\x90\xa7\xfb!9\xaa\x93C\xbb\xec\x16\xf6m\tS\xabq\xe714\x1a',
+    # b'N2': b'\xed\x08\xb6a\x02\xd9\xd8\xf9\xa4\xba\xac\x90\xa7\xfb!9\xaa\x93C\xbb\xec\x16\xf6m\tS\xabq\xe714\x1a',
+    0x2B: b'}1I\xf0\xc3l\xbe\xc3\xf9_\xd1\x00\xe9\xbf\x01\x9b\x9e\xaa\x04!\x01\xaeP\x8b\xf8\xc4\x05h\xba\xb8>W',
+    # b'N3': b'}1I\xf0\xc3l\xbe\xc3\xf9_\xd1\x00\xe9\xbf\x01\x9b\x9e\xaa\x04!\x01\xaeP\x8b\xf8\xc4\x05h\xba\xb8>W'
+}
 
 def create_packet(message, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
@@ -51,16 +56,14 @@ def listen_for_messages(conn):
                     exit_flag = True
                     break
                 elif protocol == 0:
-                    if key:
+                    try:
+                        key = keys[ipsrc]
                         decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                         print("Plaintext Message: ", decrypted_payload)
                         packet = create_packet(decrypted_payload, ipsrc, macsrc, 3, len, key)
                         conn.sendall(packet)
-                    else:
-                        # packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
-                        # print("proto 0, sending back")
-                        # conn.sendall(packet)
-                        print("Decryption Failed")
+                    except KeyError:
+                        print("Key not found")
             else:
                 print("Received message is for: ", macdst, " from ", macsrc)
                 print("Dropping packet")
@@ -96,8 +99,12 @@ def send_messages(conn):
                 print("Please input a valid node (N2/N3)")
         try:
             node = IDS[dest]
-            packet = create_packet(message, node[0], node[1], int(proto), length, key)
-            conn.sendall(packet)
+            key = keys[node[0]]
+            if key:
+                packet = create_packet(message, node[0], node[1], int(proto), length, key)
+                conn.sendall(packet)
+            if not key:
+                print("Key not found")
         except KeyError:
             print("Error: Sender not found")
             pass

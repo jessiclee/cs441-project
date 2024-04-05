@@ -18,6 +18,7 @@ MAX_LEN = 256
 SNIFF = False
 exit_flag = False
 key = b'kQ\xd41\xdf]\x7f\x14\x1c\xbe\xce\xcc\xf7\x9e\xdf=\xd8a\xc3\xb4\x06\x9f\x0b\x11f\x1a>\xef\xac\xbb\xa9\x18'
+attack_num = 0
 
 
 def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
@@ -29,6 +30,13 @@ def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
     # print("final packet:", packet)
     return packet
 
+def val_in_dict(val,pos, diction):
+    for key, value in diction.items():
+        # Check if the second element of the value matches the given value
+        if value[pos] == val:
+            return True, key
+    return False, "NIL"
+
 def listen_for_messages(conn):
     global exit_flag
     while True:
@@ -38,7 +46,8 @@ def listen_for_messages(conn):
             ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
             print(ipsrc, ipdst, protocol, len)
             if macdst == MAC:
-                print("received message from: ", macsrc, " unpack ip packet...")
+                exists, source = val_in_dict(ipsrc, 0, IDS)
+                print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                 # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print("Ciphertext Message is: ", data[9:])
                 if protocol == 1:
@@ -56,15 +65,15 @@ def listen_for_messages(conn):
                         # conn.sendall(packet)
                         print("Decryption Failed")
             elif ipdst == IDS["N3"][0] and SNIFF == True:
-                print("Intercepted traffic from",macsrc, "to", macdst)
-                print("message is:", data[9:])
+                print("Intercepted traffic from", macsrc, "to", macdst)
+                print("Message:", data[9:])
             else:
-                print("received message is for:", macdst, " from ", macsrc)
-                print("drop packet, not for me")
+                print("Received message is for ", macdst, " from ", macsrc)
+                print("Dropping packet")
             if not data:
                 break
         except ConnectionResetError:
-            print("connection closed")
+            print("Error: Connection closed")
             exit_flag = True
             break
 
@@ -72,7 +81,7 @@ def send_messages(conn,action):
     # while not exit_flag:
     # action = input("What do you want to do?\n 1.Send message\n 2.Send a spoofed message\n")
     if action =='2':
-        spoofdest = input("Enter the ID that you want to spoof (N1/N3)\n")
+        spoofdest = input("Enter the ID that you want to spoof (N1/N3):")
         spoofnode = IDS.get(spoofdest)
         ipsrc = spoofnode[0]
     elif action == "1":
@@ -81,56 +90,78 @@ def send_messages(conn,action):
         message = input("Enter message: ").encode('utf-8')
         length = len(message)
         if length > MAX_LEN:
-            print ("message too long, needs to be less than" + MAX_LEN + "try again!")
+            print ("Please input a message within the character limit " + MAX_LEN)
         else:
             break
     while True:
-        proto = input("Choose protocol: ")
+        proto = input("Choose protocol (0/1): ")
         if (proto == "0" or proto == "1"):
             break
         else:
-            print("Please input 0 (Ping Protocol) or 1 (Kill Protocol)\n")
+            print("Please input a valid protocol, 0 (Ping Protocol) or 1 (Kill Protocol)")
             
     while True:
-        dest = input("Who do you want to send it to?: ")
+        dest = input("Choose recipient (N1/N3): ")
         if (dest == "N1" or dest == "N3"):
             break
         else:
-            print("Please input a valid node (N1/N3)\n")
+            print("Please input a valid node (N1/N3)")
     try:
         node = IDS[dest]
         packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length, key)
         conn.sendall(packet)
     except KeyError:
-        print("sender not found, back to begining")
+        print("Error: Sender not found")
         pass
 
+def dos_attack(conn, target, attack_limit):
+    global attack_num
+    node = IDS[target]
+    attack_message = "DOS attack".encode('utf-8')
+    while attack_num < attack_limit:
+        packet = create_packet(attack_message, IP, node[0], node[1], 0, len(attack_message), key)
+        conn.sendall(packet)
+        attack_num += 1
+        print("DOS attack count:", attack_num, "Thread ID:", threading.get_ident())
 
 def do_actions(conn):
     while not exit_flag: 
-        action = input("What do you want to do?\n 1.Send message\n 2.Send a spoofed message\n 3.configure sniffing\n")
+        action = input("Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Perform DOS attack\n")
         if action == "1" or action == '2':
             send_messages(conn, action)
         elif action == "3":
             while True:
-                option = input("choose:\n 1.start sniffing\n 2.stop sniffing \n")
+                option = input("Select action:\n 1. Start sniffing\n 2. Stop sniffing \n")
                 global SNIFF
                 if option == "1" and SNIFF == False:
                     SNIFF = True
-                    print("sniffing starts\n")
+                    print("Sniffing started")
                     break
                 elif option == "1" and SNIFF == True:
-                    print("sniffing already started")
+                    print("Sniffing already started")
                     continue
                 elif option == "2" and SNIFF == True:
                     SNIFF = False
-                    print("sniffing stopped")
+                    print("Sniffing stopped")
                     break
                 elif option == "2" and SNIFF == False:
-                    print("sniffing already stopped")
+                    print("Sniffing already stopped")
                     continue
+        elif action == "4":
+            target = str(input("Enter target (N1/N3): "))
+            if target == "N1" or target == "N3":
+                thread_count = 10 # to edit: number of threads to run concurrently
+                attack_limit = 50 # to edit: number of packets to send
+                for i in range(thread_count):
+                    thread = threading.Thread(target=dos_attack, args=(conn, target, attack_limit))
+                    thread.start()
+                while attack_num < attack_limit:
+                    pass
+                print("DOS attack complete")
+            else:
+                print("Error: Invalid target")
         else:
-            print("invalid choice!")
+            print("Error: Invalid action")
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
