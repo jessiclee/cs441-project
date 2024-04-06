@@ -62,7 +62,7 @@ def handle_ip_packet(data, interf, local):
         else:
             print("something went wrong, info here, ", data, interf, local)
     except KeyError:
-        print("something went wrong, ipdst is: ", ipdst)
+        print(f"something went wrong: ipdst {ipdst} ipsrc {ipsrc} local{local}")
         print(R1_IDS)
         print(R2_IDS)
 
@@ -74,9 +74,9 @@ def receive_packets(interface_socket):
                 break
             #unpack ethernet frame and check destination MAC to know which interface to forward to
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-            print(f"Received packet from {macsrc}: {data}")
+            print(f"Received packet from {macsrc} to {macdst}: {data}")
             if macdst == MAC1:
-                threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 2,)).start()
+                threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 2)).start()
             elif macdst == MAC2:
                 threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 1)).start()
             elif macdst in R2_IDS.values():

@@ -30,7 +30,7 @@ attack_num = 0
 def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
     # print(esp_packet)
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
     # print("ip pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     # print("final packet:", packet)
@@ -65,7 +65,7 @@ def listen_for_messages(conn):
                         # key = wrong_key
                         decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                         print("Plaintext Message: ", decrypted_payload)
-                        packet = create_packet(decrypted_payload, ipsrc, ipdst, macsrc, 3, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
+                        packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 3, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
                         conn.sendall(packet)
                     except KeyError:
                         print(ipsrc, type(ipsrc))

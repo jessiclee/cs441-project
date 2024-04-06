@@ -50,8 +50,7 @@ def listen_for_messages(conn):
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 exists, source = val_in_dict(ipsrc, 0, IDS)
                 print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
-                print("Message: ", data[9:])
-                print("Ciphertext Message is: ", data[9:])     
+                print("Ciphertext Message is: ", data[9:])
                 if protocol == 1:
                     exit_flag = True
                     break
