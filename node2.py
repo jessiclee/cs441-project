@@ -2,6 +2,7 @@ import socket
 import struct
 import threading
 import ipsec
+import time
 
 IDS = {
     "N1": (0x1A,  b'R2'),
@@ -124,7 +125,7 @@ def send_messages(conn,action):
         print("Error: Sender not found")
         pass
 
-def dos_attack(conn, target, attack_limit):
+def dos_attack(conn, target, attack_limit, key):
     global attack_num
     node = IDS[target]
     attack_message = "DOS attack".encode('utf-8')
@@ -136,7 +137,7 @@ def dos_attack(conn, target, attack_limit):
 
 def do_actions(conn):
     while not exit_flag: 
-        action = input("Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Perform DOS attack\n")
+        action = input("\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Perform DOS attack\n")
         if action == "1" or action == '2':
             send_messages(conn, action)
         elif action == "3":
@@ -159,17 +160,22 @@ def do_actions(conn):
                     continue
         elif action == "4":
             target = str(input("Enter target (N1/N3): "))
-            if target == "N1" or target == "N3":
-                thread_count = 10 # to edit: number of threads to run concurrently
-                attack_limit = 50 # to edit: number of packets to send
-                for i in range(thread_count):
-                    thread = threading.Thread(target=dos_attack, args=(conn, target, attack_limit))
-                    thread.start()
-                while attack_num < attack_limit:
-                    pass
-                print("DOS attack complete")
-            else:
+            if not (target == "N1" or target == "N3"):
                 print("Error: Invalid target")
+            else:
+                try:
+                    attack_limit = int(input("Enter number of packets to send: "))
+                    thread_count = int(input("Enter number of threads to create: "))
+                    # thread_count = 1 # to edit: number of threads to run concurrently
+                    # attack_limit = 1 # to edit: number of packets to send
+                    for i in range(thread_count):
+                        thread = threading.Thread(target=dos_attack, args=(conn, target, attack_limit, wrong_key)) # to edit: key
+                        thread.start()
+                    while attack_num < attack_limit:
+                        time.sleep(1) # delay for threads to complete running
+                    print("DOS attack complete")
+                except ValueError:
+                    print("Error: Invalid input, please enter an integer")
         else:
             print("Error: Invalid action")
 
