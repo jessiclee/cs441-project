@@ -1,7 +1,7 @@
 import socket
 import struct
 import threading
-from ipsec import generate_key, encrypt_payload, decrypt_packet 
+import ipsec
 import secrets
 import time
 import csv
@@ -26,7 +26,7 @@ key = None
 
 
 def create_packet(message, ipdest, mac, protocol, length, key):
-    esp_packet = encrypt_payload(message, key)
+    esp_packet = ipsec.encrypt_payload(message, key)
     # print(esp_packet)
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
     # print("ip pack created:", ippack)
@@ -39,10 +39,20 @@ def create_packet_key_gen(message, ipdest, mac, protocol, length):
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     return packet
 
-def append_to_csv(data):
-    with open("nonces.csv", 'a') as csvfile:
-        csvwriter = csv.writer(csvfile)
-        csvwriter.writerow(data)
+def append_to_txt(data):
+    try:
+        with open("nonces.txt", 'r') as file_reader:
+            existing_entries = file_reader.readlines()
+    except FileNotFoundError:
+        existing_entries = []
+        
+    if len(existing_entries) == 0:
+        with open("nonces.txt", 'a') as csvfile:
+            csvfile.write(data)
+            
+    if len(existing_entries) == 1:
+        with open("nonces.txt", 'a') as csvfile:
+            csvfile.write("\n" + data)
 
 def val_in_dict(val,pos, diction):
     for key, value in diction.items():
@@ -57,14 +67,19 @@ def listen_for_messages(conn):
         try:
             data = conn.recv(1024)
             if data[9:] == b'N3:Zq6,eS2yN%sUTF)k':
-                print("here")
-                time.sleep(3)
+                time.sleep(2)
                 # ipsec.set_input(secrets.token_hex(16))
-                append_to_csv(secrets.token_hex(16))
-                print("here2")
-                key = generate_key()
-                print(key)
+                append_to_txt(secrets.token_hex(16))
+                key = ipsec.generate_key()
+                print("Current Key is: ", key)
+                
+                # Ensure sender has enough time to retrieve the key
+                time.sleep(2)
+                
+                # Revert CSV to a clean state
+                ipsec.clean_csv()
             elif data[9:] == b'N2:Zq6,eS2yN%sUTF)k' or data[9:] == b'N1:Zq6,eS2yN%sUTF)k':
+                # Do noting because the key is not theirs
                 pass
             else:
                 print(data[9:])
@@ -85,7 +100,7 @@ def listen_for_messages(conn):
                         break
                     elif protocol == 0:
                         if key:
-                            decrypted_payload = decrypt_packet(data[9:], key)
+                            decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                             print("Plaintext Message: ", decrypted_payload)
                             packet = create_packet(decrypted_payload, ipsrc, macsrc, 3, len, key)
                             conn.sendall(packet)
@@ -129,15 +144,20 @@ def send_messages(conn):
         try:
             node = IDs[dest]
             
-            # Signal to receiver to take part in key generation
-            conn.sendall(dest.encode)
+            # Random String s.t. an adversary would not be able to craft a fake key gen message
+            # Unless he knows the secret hardcoded information
+            key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
+            key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), node[0], node[1], int(proto), length)
+            print(key_gen_msg.encode('utf-8'))
+            conn.sendall(key_gen_packet)
             
             # Contribute in the key generation after that
-            append_to_csv(secrets.token_hex(16))
-            key = generate_key()
+            append_to_txt(secrets.token_hex(16))
+            time.sleep(2)
+            key = ipsec.generate_key()
             
             # To check if the key is different everytime
-            print(key)
+            print("Current Key is: ", key)
             
             # Send the actual packet
             packet = create_packet(message, node[0], node[1], int(proto), length, key)

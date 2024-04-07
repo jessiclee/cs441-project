@@ -2,54 +2,48 @@ import os
 import hashlib
 # pip install pycryptodome
 from Crypto.Cipher import AES
-import multiprocessing
+# import multiprocessing
 import csv
-import threading
+# import threading
 import time
 
-key_generation_event = multiprocessing.Event()
-
-# Variables to hold nonces from two programs
 inputs = []
-
 
 def check_csv():
     while True:
-        with open("nonces.csv", 'r') as csvfile:
+        with open("nonces.txt", 'r') as csvfile:
             csvreader = csv.reader(csvfile)
             for row in csvreader:
                 inputs.append(row)
         if len(inputs) > 2:
-            key_generation_event.set()
-        print("Going to sleep")
-        time.sleep(10)
-    
-# def set_input(input_data):
-#     inputs.append(input_data)
-#     if len(inputs) == 2:
-#         key_generation_event.set()
-#     print(len(inputs))
-#     print(input_data)
+            return True
+
+def clean_csv():
+    with open("nonces.txt", 'w', newline='') as csvfile:
+        pass
 
 def generate_key():
     
     # Wait until both inputs have been received
-    key_generation_event.wait()
+    # key_generation_event.wait()
+    check_csv()
     
-    combined_nonce = None
+    # CSV at this point is ready
+    combined_nonce = ""
+    try:
+        with open("nonces.txt", 'r') as file_reader:
+            combined_nonce = ''.join(file_reader.readlines())
+    except FileNotFoundError:
+        print("Error: File not found.")
+    except IOError:
+        print("Error: Unable to read the file.")
     
-    for i in inputs: 
-        # Concatenate sender and receiver nonces
-        combined_nonce += i
     
     # Apply a hash function (e.g., SHA-256) to derive the key
-    key = hashlib.sha256(combined_nonce).digest()
-    
-    inputs = []
-    with open("nonces.csv", 'w', newline='') as csvfile:
-        pass
+    key = hashlib.sha256(combined_nonce.encode()).digest()
     
     return key
+
 
 def encrypt_payload(payload, key):
     # Pad the payload to fit AES block size
@@ -91,14 +85,3 @@ def decrypt_packet(esp_packet, key):
         raise ValueError("HMAC verification failed. Possible tampering.")
 
     return decrypted_payload.rstrip(b'\x00')  # Remove padding before returning
-
-check_thread = threading.Thread(target=check_csv)
-check_thread.daemon = True  # Daemonize the thread so it automatically stops when the main program exits
-check_thread.start()
-
-# Main program continues...
-try:
-    while True:
-        time.sleep(1)  # Keep the main thread alive
-except KeyboardInterrupt:
-    print("Program terminated.")
