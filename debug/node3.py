@@ -4,7 +4,6 @@ import threading
 import ipsec
 import secrets
 import time
-import csv
 
 IDs = {
     "N1": (0x1A,  b'R2'),
@@ -21,6 +20,7 @@ IP = 0x2B
 MAC = b"N3"
 MAX_LEN = 256
 exit_flag = False
+wrong_key = b'\xd8c\xa6\xdd\r\xf5@\xd6&Y\x96\xc1\xd0\xf6d\x87\xe81\x07\x0c\xde\xbbN"\xa4\xf3\x9c\x83\x9d5t3'
 # key = b'kQ\xd41\xdf]\x7f\x14\x1c\xbe\xce\xcc\xf7\x9e\xdf=\xd8a\xc3\xb4\x06\x9f\x0b\x11f\x1a>\xef\xac\xbb\xa9\x18'
 key = None
 
@@ -68,7 +68,6 @@ def listen_for_messages(conn):
             data = conn.recv(1024)
             if data[9:] == b'N3:Zq6,eS2yN%sUTF)k':
                 time.sleep(2)
-                # ipsec.set_input(secrets.token_hex(16))
                 append_to_txt(secrets.token_hex(16))
                 key = ipsec.generate_key()
                 print("Current Key is: ", key)
@@ -82,11 +81,6 @@ def listen_for_messages(conn):
                 # Do noting because the key is not theirs
                 pass
             else:
-                print(data[9:])
-                if data[9:] == b'N3:Zq6,eS2yN%sUTF)k':
-                    print(True)
-                else:
-                    print(False)
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
                 is_blocked, k = val_in_dict(macsrc, 1, BLOCKed)
                 if is_blocked:

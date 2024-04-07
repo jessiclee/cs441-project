@@ -20,6 +20,7 @@ MAX_LEN = 256
 SNIFF = False
 exit_flag = False
 key = None
+wrong_key = b'\xd8c\xa6\xdd\r\xf5@\xd6&Y\x96\xc1\xd0\xf6d\x87\xe81\x07\x0c\xde\xbbN"\xa4\xf3\x9c\x83\x9d5t3'
 attack_num = 0
 
 
@@ -44,7 +45,6 @@ def val_in_dict(val,pos, diction):
             return True, key
     return False, "NIL"
 
-
 def append_to_txt(data):
     try:
         with open("nonces.txt", 'r') as file_reader:
@@ -67,7 +67,6 @@ def listen_for_messages(conn):
             data = conn.recv(1024)
             if data[9:] == b"N2:Zq6,eS2yN%sUTF)k":
                 time.sleep(2)
-                # ipsec.set_input(secrets.token_hex(16))
                 append_to_txt(secrets.token_hex(16))
                 key = ipsec.generate_key()
                 print("Current Key is: ", key)
@@ -200,17 +199,22 @@ def do_actions(conn):
                     continue
         elif action == "4":
             target = str(input("Enter target (N1/N3): "))
-            if target == "N1" or target == "N3":
-                thread_count = 10 # to edit: number of threads to run concurrently
-                attack_limit = 50 # to edit: number of packets to send
-                for i in range(thread_count):
-                    thread = threading.Thread(target=dos_attack, args=(conn, target, attack_limit))
-                    thread.start()
-                while attack_num < attack_limit:
-                    pass
-                print("DOS attack complete")
-            else:
+            if not (target == "N1" or target == "N3"):
                 print("Error: Invalid target")
+            else:
+                try:
+                    attack_limit = int(input("Enter number of packets to send: "))
+                    thread_count = int(input("Enter number of threads to create: "))
+                    # thread_count = 1 # to edit: number of threads to run concurrently
+                    # attack_limit = 1 # to edit: number of packets to send
+                    for i in range(thread_count):
+                        thread = threading.Thread(target=dos_attack, args=(conn, target, attack_limit, wrong_key)) # to edit: key
+                        thread.start()
+                    while attack_num < attack_limit:
+                        time.sleep(1) # delay for threads to complete running
+                    print("DOS attack complete")
+                except ValueError:
+                    print("Error: Invalid input, please enter an integer")
         else:
             print("Error: Invalid action")
 

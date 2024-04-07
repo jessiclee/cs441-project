@@ -5,7 +5,6 @@ from Crypto.Cipher import AES
 # import multiprocessing
 import csv
 # import threading
-import time
 
 inputs = []
 
@@ -28,7 +27,7 @@ def generate_key():
     # key_generation_event.wait()
     check_csv()
     
-    # CSV at this point is ready
+    # Text file has 2 nonces: Ready to make shared key
     combined_nonce = ""
     try:
         with open("nonces.txt", 'r') as file_reader:
@@ -38,8 +37,7 @@ def generate_key():
     except IOError:
         print("Error: Unable to read the file.")
     
-    
-    # Apply a hash function (e.g., SHA-256) to derive the key
+    # Apply SHA256 to derive the key
     key = hashlib.sha256(combined_nonce.encode()).digest()
     
     return key

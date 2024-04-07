@@ -19,6 +19,7 @@ MAC = b"N1"
 MAX_LEN = 256
 exit_flag = False
 key = None
+wrong_key = b'\xd8c\xa6\xdd\r\xf5@\xd6&Y\x96\xc1\xd0\xf6d\x87\xe81\x07\x0c\xde\xbbN"\xa4\xf3\x9c\x83\x9d5t3'
 
 
 def create_packet(message, ipdest, mac, protocol, length, key):

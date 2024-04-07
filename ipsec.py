@@ -4,6 +4,7 @@ import hashlib
 from Crypto.Cipher import AES
 import multiprocessing
 import secrets
+import csv
 
 
 # Create an event for synchronization
@@ -13,31 +14,44 @@ key_generation_event = multiprocessing.Event()
 # Variables to hold inputs from prog1 and prog2
 inputs = []
 
-def set_input(input_data):
-    inputs.append(input_data)
-    if len(inputs) == 2:
-        key_generation_event.set()
+def check_csv():
+    while True:
+        with open("nonces.txt", 'r') as csvfile:
+            csvreader = csv.reader(csvfile)
+            for row in csvreader:
+                inputs.append(row)
+        if len(inputs) > 2:
+            return True
 
-def generate_keys(sender_nonce, receiver_nonce):
-    
-    # Wait until both inputs have been received
-    key_generation_event.wait()
-    
-    combined_nonce = None
-    
-    for i in inputs: 
-        # Concatenate sender and receiver nonces
-        combined_nonce += i
-    
-    # Apply a hash function (e.g., SHA-256) to derive the key
-    key = hashlib.sha256(combined_nonce).digest()
-    
-    return key
+def clean_csv():
+    with open("nonces.txt", 'w', newline='') as csvfile:
+        pass
 
 def generate_key():
     
+    # Wait until both inputs have been received
+    # key_generation_event.wait()
+    check_csv()
+    
+    # Text file has 2 nonces: Ready to make shared key
+    combined_nonce = ""
+    try:
+        with open("nonces.txt", 'r') as file_reader:
+            combined_nonce = ''.join(file_reader.readlines())
+    except FileNotFoundError:
+        print("Error: File not found.")
+    except IOError:
+        print("Error: Unable to read the file.")
+    
+    # Apply SHA256 to derive the key
+    key = hashlib.sha256(combined_nonce.encode()).digest()
+    
+    return key
+
+
+def generate_fake_key():
+    
     inputs = [secrets.token_hex(16), secrets.token_hex(16)]
-    # print(inputs)
     combined_nonce = ""
     
     for i in inputs: 
@@ -49,8 +63,6 @@ def generate_key():
     key = hashlib.sha256(combined_nonce).digest()
     
     return key
-
-# print(generate_key())
 
 def encrypt_payload(payload, key):
     # Pad the payload to fit AES block size
