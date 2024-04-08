@@ -29,11 +29,11 @@ keys = {
 
 def create_packet(message, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
-    # print(esp_packet)
+    print("\nEncrypted Packet:", esp_packet)
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
-    # print("ip pack created:", ippack)
+    print("IP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    # print("final packet:", packet)
+    print("Final Packet w/ MAC address:", packet, "\n")
     return packet
 
 def create_packet_key_gen(message, ipdest, mac, protocol, length):
@@ -93,8 +93,11 @@ def listen_for_messages(conn):
                     print(f"Dropping packet as sender is in blocked list {k}")
                     continue
                 elif macdst == MAC:
+                    print("\n Packet w/ MAC address:", data)
+                    
                     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    print("Ciphertext Message is: ", data[9:])
+                    print("Packet w/ IP address:", data[5:])
+                    print("Encrypted Packet is: ", data[9:], "\n")
                     if protocol == 1:
                         exit_flag = True
                         break

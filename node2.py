@@ -29,11 +29,11 @@ attack_num = 0
 
 def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
-    # print(esp_packet)
+    print("\nEncrypted Packet:", esp_packet)
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
-    # print("ip pack created:", ippack)
+    print("IP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    # print("final packet:", packet)
+    print("Final Packet w/ MAC address:", packet , "\n")
     return packet
 
 
@@ -95,10 +95,13 @@ def listen_for_messages(conn):
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print(ipsrc, ipdst, protocol, len)
                 if macdst == MAC:
+                    print("\n Packet w/ MAC address:", data)
+                    
                     exists, source = val_in_dict(ipsrc, 0, IDS)
                     print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    print("Ciphertext Message is: ", data[9:])
+                    print("\n Packet w/ IP address:", data[5:])
+                    print("Encrypted packet is: ", data[9:])
                     if protocol == 1:
                         exit_flag = True
                         break
@@ -188,7 +191,8 @@ def dos_attack(conn, target, attack_limit):
     # key = wrong_key
     attack_message = "DOS attack".encode('utf-8')
     while attack_num < attack_limit:
-        packet = create_packet(attack_message, IP, node[0], node[1], 0, len(attack_message), key)
+        # packet = create_packet(attack_message, IP, node[0], node[1], 0, len(attack_message), key)
+        packet = create_packet_key_gen(attack_message, IP, node[0], node[1], 0, len(attack_message))
         conn.sendall(packet)
         attack_num += 1
         print("DOS attack count:", attack_num, "Thread ID:", threading.get_ident())
