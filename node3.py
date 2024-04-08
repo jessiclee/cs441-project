@@ -74,6 +74,9 @@ def listen_for_messages(conn):
                 key = ipsec.generate_key()
                 print("Current Key is: ", key)
                 
+                ## Uncomment here for demo ##
+                # key = wrong_key
+                
                 # Update Key Dictionary
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 keys[ipsrc] = key
