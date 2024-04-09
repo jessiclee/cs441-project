@@ -19,34 +19,24 @@ MAC = b"N2"
 MAX_LEN = 256
 SNIFF = False
 exit_flag = False
+key = None
 wrong_key = b'\xd8c\xa6\xdd\r\xf5@\xd6&Y\x96\xc1\xd0\xf6d\x87\xe81\x07\x0c\xde\xbbN"\xa4\xf3\x9c\x83\x9d5t3'
-keys = {
-    0x1A: b'\xed\x08\xb6a\x02\xd9\xd8\xf9\xa4\xba\xac\x90\xa7\xfb!9\xaa\x93C\xbb\xec\x16\xf6m\tS\xabq\xe714\x1a',
-    0x2B: b'\xf4\x9e\xf7~T\xc3P^\xa4\n\xe8\xbb]\xe1\x97\xe3\xa4\x1cf6U\xf0=\xe2\x15\xcc\xd8\xf1\xe8\x14\xaa\xcd'
-}
 attack_num = 0
-attack_performed = {
-    "N1": False,
-    "N3": False
-}
 
-BROADCASTMAC = b"FF"
 
 def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
-    print("\nEncrypted Packet:", esp_packet)
+    # print(esp_packet)
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
-    print("IP Packet w/ Encrypted Packet:", ippack)
+    # print("ip pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    print("Final Packet w/ MAC address:", packet , "\n")
+    # print("final packet:", packet)
     return packet
-
 
 def create_packet_key_gen(message, ipsrc, ipdest, mac, protocol, length):
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     return packet
-
 
 def val_in_dict(val,pos, diction):
     for key, value in diction.items():
@@ -54,7 +44,6 @@ def val_in_dict(val,pos, diction):
         if value[pos] == val:
             return True, key
     return False, "NIL"
-
 
 def append_to_txt(data):
     try:
@@ -71,54 +60,16 @@ def append_to_txt(data):
         with open("nonces.txt", 'a') as csvfile:
             csvfile.write("\n" + data)
 
-
 def listen_for_messages(conn):
     global exit_flag
     while True:
         try:
             data = conn.recv(1024)
-            macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            if macdst == MAC:
-                print("received message from: ", macsrc, " unpack ip packet...")
-                # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                print("message is:", data[9:])
-                if protocol == 1:
-                    exit_flag = True 
-                    break
-                elif protocol == 0:
-                    # print(macsrc)
-                    packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
-                    print("proto 0, sending back")
-                    conn.sendall(packet)
-            elif macdst == BROADCASTMAC and ipdst == IP and protocol == 2:
-                print("received ARP request from: ", hex(ipsrc), "for :", hex(ipdst) )
-                print("sending ARP reply back")
-                packet = create_packet(data[9:], ipsrc, IP, macsrc, 2, len)
-                conn.sendall(packet)
-            elif macdst == BROADCASTMAC and ipdst == IP and protocol == 3:
-                print("Received gratitous ARP from ",hex(ipsrc))                
-                print("ids table before:", IDS)
-                for node, (ip, mac) in IDS.items():
-                    # Check if the MAC address matches the target MAC
-                    if ip == ipsrc:
-                        # Update the MAC address for N3 to N1
-                        IDS[node] = (ipsrc, b"R2") #hardcoded slightly2
-                        break  
-                # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
-                print("ids table after:", IDS)
-            elif ipdst == IDS["N3"][0] and SNIFF == True:
-                print("Intercepted traffic from",macsrc, "to", macdst)
-                print("message is:", data[9:])
             if data[9:] == b"N2:Zq6,eS2yN%sUTF)k":
                 time.sleep(2)
                 append_to_txt(secrets.token_hex(16))
                 key = ipsec.generate_key()
                 print("Current Key is: ", key)
-                
-                # Update Key Dictionary
-                ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                keys[ipsrc] = key
                 
                 # Ensure sender has enough time to retrieve the key
                 time.sleep(2)
@@ -133,27 +84,21 @@ def listen_for_messages(conn):
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print(ipsrc, ipdst, protocol, len)
                 if macdst == MAC:
-                    print("\n Packet w/ MAC address:", data)
-                    
                     exists, source = val_in_dict(ipsrc, 0, IDS)
                     print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    print("\n Packet w/ IP address:", data[5:])
-                    print("Encrypted packet is: ", data[9:])
+                    print("Ciphertext Message is: ", data[9:])
                     if protocol == 1:
                         exit_flag = True
                         break
                     elif protocol == 0:
-                        try:
-                            key = keys[ipsrc]
-                            # key = wrong_key
+                        if key:
                             decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                             print("Plaintext Message: ", decrypted_payload)
-                            packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 3, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
+                            packet = create_packet(decrypted_payload, ipsrc, ipdst, macsrc, 3, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
                             conn.sendall(packet)
-                        except KeyError:
-                            print(ipsrc, type(ipsrc))
-                            print("Key not found")
+                        else:
+                            print("Decryption Failed")
                 elif ipdst == IDS["N3"][0] and SNIFF == True:
                     print("Intercepted traffic from", macsrc, "to", macdst)
                     print("Message:", data[9:])
@@ -203,6 +148,7 @@ def send_messages(conn,action):
         # Unless he knows the secret hardcoded information
         key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
         key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), ipsrc, node[0], node[1], int(proto), length)
+        print(key_gen_msg.encode('utf-8'))
         conn.sendall(key_gen_packet)
         
         # Contribute in the key generation after that
@@ -212,38 +158,25 @@ def send_messages(conn,action):
         
         # To check if the key is different everytime
         print("Current Key is: ", key)
-        
-        # Update Key in the Dictionary
-        keys[node[0]] = key
-        
         packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length, key)
         conn.sendall(packet)
     except KeyError:
         print("Error: Sender not found")
         pass
 
-def dos_attack(conn, target, attack_limit, final=False):
+def dos_attack(conn, target, attack_limit):
     global attack_num
     node = IDS[target]
-    key  = keys[node[0]]
     attack_message = "DOS attack".encode('utf-8')
-    if final:
-        packet = create_packet_key_gen(attack_message, IP, node[0], node[1], 1, len(attack_message))
-        conn.sendall(packet)
-        return
     while attack_num < attack_limit:
-        packet = create_packet_key_gen(attack_message, IP, node[0], node[1], 0, len(attack_message))
+        packet = create_packet(attack_message, IP, node[0], node[1], 0, len(attack_message), key)
         conn.sendall(packet)
         attack_num += 1
         print("DOS attack count:", attack_num, "Thread ID:", threading.get_ident())
 
 def do_actions(conn):
-    global attack_performed
     while not exit_flag: 
-        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n"
-        if not attack_performed["N1"] or not attack_performed["N3"]:
-            prompt +=  " 4. Perform DOS attack\n"
-        action = input(prompt)
+        action = input("Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Perform DOS attack\n")
         if action == "1" or action == '2':
             send_messages(conn, action)
         elif action == "3":
@@ -268,23 +201,18 @@ def do_actions(conn):
             target = str(input("Enter target (N1/N3): "))
             if not (target == "N1" or target == "N3"):
                 print("Error: Invalid target")
-            elif attack_performed[target]:
-                print("Error: Node has already been attacked")
             else:
                 try:
                     attack_limit = int(input("Enter number of packets to send: "))
                     thread_count = int(input("Enter number of threads to create: "))
+                    # thread_count = 1 # to edit: number of threads to run concurrently
+                    # attack_limit = 1 # to edit: number of packets to send
                     for i in range(thread_count):
-                        thread = threading.Thread(target=dos_attack, args=(conn, target, attack_limit))
+                        thread = threading.Thread(target=dos_attack, args=(conn, target, attack_limit, wrong_key)) # to edit: key
                         thread.start()
                     while attack_num < attack_limit:
-                        pass
-                    
-                    time.sleep(1) # delay for threads to complete running
-                    
-                    dos_attack(conn, target, attack_limit, True)
+                        time.sleep(1) # delay for threads to complete running
                     print("DOS attack complete")
-                    attack_performed[target] = True
                 except ValueError:
                     print("Error: Invalid input, please enter an integer")
         else:
