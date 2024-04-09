@@ -107,7 +107,10 @@ def listen_for_messages(conn):
                     elif protocol == 0:
                         try:
                             key = keys[ipsrc]
-                            decrypted_payload = ipsec.decrypt_packet(data[9:], key)
+                            if data[9:19] == b'DOS attack':
+                                decrypted_payload = b'DOS attack'
+                            else:
+                                decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                             print("Plaintext Message: ", decrypted_payload)
                             packet = create_packet(decrypted_payload, ipsrc, macsrc, 3, len, key)
                             conn.sendall(packet)
