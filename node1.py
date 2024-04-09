@@ -18,16 +18,20 @@ IP = 0x1A
 MAC = b"N1"
 MAX_LEN = 256
 exit_flag = False
+arp_poisoning = False
+
+BROADCASTMAC = b"FF"
+
 wrong_key = b'\xd8c\xa6\xdd\r\xf5@\xd6&Y\x96\xc1\xd0\xf6d\x87\xe81\x07\x0c\xde\xbbN"\xa4\xf3\x9c\x83\x9d5t3'
 keys = {
     0x2A: b'\xed\x08\xb6a\x02\xd9\xd8\xf9\xa4\xba\xac\x90\xa7\xfb!9\xaa\x93C\xbb\xec\x16\xf6m\tS\xabq\xe714\x1a',
     0x2B: b'}1I\xf0\xc3l\xbe\xc3\xf9_\xd1\x00\xe9\xbf\x01\x9b\x9e\xaa\x04!\x01\xaeP\x8b\xf8\xc4\x05h\xba\xb8>W'
 }
 
-def create_packet(message, ipdest, mac, protocol, length, key):
+def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
     print("\nEncrypted Packet:", esp_packet)
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
     print("IP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     print("Final Packet w/ MAC address:", packet , "\n")
@@ -62,9 +66,37 @@ def val_in_dict(val,pos, diction):
 
 def listen_for_messages(conn):
     global exit_flag
+    global arp_poisoning
     while True:
         try:
             data = conn.recv(1024)
+            macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+            print("\nmacdst is:", macdst)
+            if macdst == MAC:
+                print("received message from: ", macsrc, " unpack ip packet...")
+                # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+                print("message is:", data[9:])
+                if protocol == 1:
+                    exit_flag = True
+                    break
+                elif protocol == 0:
+                    packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
+                    print("proto 0, sending back")
+                    conn.sendall(packet)
+                elif protocol == 2:
+                    print("received ARP reply\n")
+                    print("sending gratitous ARP\n")
+                    packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 3, len)
+            elif macdst == BROADCASTMAC and arp_poisoning == True:
+                print ("detected ARP message from", hex(ipsrc), "to", hex(ipdst))
+                print("sending gratitous ARP\n")
+                message = "".encode('utf-8')
+                packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node
+                packet2 = create_packet(message, ipdst, ipsrc, BROADCASTMAC, 3, 0) #this is packet to N3 from "N2"
+                conn.sendall(packet1)
+                conn.sendall(packet2)
+                break
             if data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
                 time.sleep(2)
                 # ipsec.set_input(secrets.token_hex(16))
@@ -121,7 +153,39 @@ def listen_for_messages(conn):
             break
 
 def send_messages(conn):
+    while True:
+        message = input("Enter message: \n").encode('utf-8')
+        length = len(message)
+        print(length)
+        if length > MAX_LEN:
+            print ("message too long, needs to be less than" + MAX_LEN + "try again!")
+        else:
+            break
+    proto = input("Choose protocol: \n")
+    dest = input("Who do you want to send it to?: \n")
+    try:
+        node = IDS[dest]
+        packet = create_packet(message, IP, node[0], node[1], int(proto), length)
+        conn.sendall(packet)
+    except KeyError:
+        print("sender not found, back to begining")
+        pass
+        
+def do_actions(conn):
     while not exit_flag: 
+        action = input("What do you want to do?\n 1.Send message\n 2.start/stop arp poisoning\n")
+        if action == "1":
+            send_messages(conn)
+        elif action == "2":
+            global arp_poisoning 
+            if arp_poisoning == True:
+                print("arp poisoning stopped\n")
+                arp_poisoning = False
+            else:
+                print("arp poisoning started\n")
+                arp_poisoning = True 
+        else:
+            print("invalid choice!")
         while True:
             message = input("Enter message: ").encode('utf-8')
             length = len(message)
@@ -184,7 +248,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     listener_thread.start()
 
     #thread to send messages
-    sending_thread = threading.Thread(target=send_messages, args=(s,), daemon=True)
+    sending_thread = threading.Thread(target=do_actions, args=(s,), daemon=True)
     sending_thread.start()
 
     #main function to keep it running until it is killed

@@ -36,8 +36,9 @@ def create_packet(message, ipdest, mac, protocol, length, key):
     print("Final Packet w/ MAC address:", packet, "\n")
     return packet
 
-def create_packet_key_gen(message, ipdest, mac, protocol, length):
+def create_packet(message, ipdest, mac, protocol, length):
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
+    print("ip pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     return packet
 
@@ -68,57 +69,25 @@ def listen_for_messages(conn):
     while True:
         try:
             data = conn.recv(1024)
-            if data[9:] == b'N3:Zq6,eS2yN%sUTF)k':
-                time.sleep(2)
-                append_to_txt(secrets.token_hex(16))
-                key = ipsec.generate_key()
-                print("Current Key is: ", key)
-                
-                ## Uncomment here for demo ##
-                # key = wrong_key
-                
-                # Update Key Dictionary
+            macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+            if macsrc in BLOCKed:
+                print(f"drop packet, is from {macsrc} which is part of the block list")
+                continue
+            elif macdst == MAC:
+                print("received message from: ", macsrc, " unpack ip packet...")
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                keys[ipsrc] = key
-                
-                # Ensure sender has enough time to retrieve the key
-                time.sleep(2)
-                
-                # Revert CSV to a clean state
-                ipsec.clean_csv()
-            elif data[9:] == b'N2:Zq6,eS2yN%sUTF)k' or data[9:] == b'N1:Zq6,eS2yN%sUTF)k':
-                # Do noting because the key is not theirs
-                pass
+                print("message is:", data[9:])
+                if protocol == 1:
+                    exit_flag = True
+                    break
+                elif protocol == 0:
+                    print(macsrc)
+                    packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
+                    print("proto 0, sending back")
+                    conn.sendall(packet)
             else:
-                macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-                is_blocked, k = val_in_dict(macsrc, 1, BLOCKed)
-                if is_blocked:
-                    print(f"Dropping packet as sender is in blocked list {k}")
-                    continue
-                elif macdst == MAC:
-                    print("\n Packet w/ MAC address:", data)
-                    
-                    ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    print("Packet w/ IP address:", data[5:])
-                    print("Encrypted Packet is: ", data[9:], "\n")
-                    if protocol == 1:
-                        exit_flag = True
-                        break
-                    elif protocol == 0:
-                        try:
-                            key = keys[ipsrc]
-                            if data[9:19] == b'DOS attack':
-                                decrypted_payload = b'DOS attack'
-                            else:
-                                decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                            print("Plaintext Message: ", decrypted_payload)
-                            packet = create_packet(decrypted_payload, ipsrc, macsrc, 3, len, key)
-                            conn.sendall(packet)
-                        except KeyError:
-                            print("Key not found")
-                else:
-                    print("Received message is for ", macdst, " from ", macsrc)
-                    print("Dropping packet")
+                print("received message is for:", macdst, " from ", macsrc)
+                print("drop packet, not for me")
             if not data:
                 break
         except ConnectionResetError:
@@ -149,26 +118,7 @@ def send_messages(conn):
                 print("Please input a valid node (N1/N2)")
         try:
             node = IDs[dest]
-            
-            # Random String s.t. an adversary would not be able to craft a fake key gen message
-            # Unless he knows the secret hardcoded information
-            key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
-            key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), node[0], node[1], int(proto), length)
-            conn.sendall(key_gen_packet)
-            
-            # Contribute in the key generation after that
-            append_to_txt(secrets.token_hex(16))
-            time.sleep(2)
-            key = ipsec.generate_key()
-            
-            # To check if the key is different everytime
-            print("Current Key is: ", key)
-            
-            # Update Key in the Dictionary
-            keys[node[0]] = key
-            
-            # Send the actual packet
-            packet = create_packet(message, node[0], node[1], int(proto), length, key)
+            packet = create_packet(message, node[0], node[1], int(proto), length)
             conn.sendall(packet)
         except KeyError:
             print("Error: Sender not found")
@@ -211,14 +161,24 @@ def manage_firewall():
                 print(f"Error: {choice2} is not in the list")
         else: 
             print("Error: Invalid choice")
+        
+def send_arp_request(conn):
+    dest = input("who are we sending the request to?\n")
+    node = IDs[dest]
+    print("sending ARP request")
+    message = "".encode('utf-8')
+    packet = create_packet(message, IP, node[0], BROADCASTMAC, 2, 0)
+    conn.sendall(packet)
 
 def do_actions(conn):
     while not exit_flag: 
-        action = input("Select action:\n 1. Send message\n 2. Configure firewall\n")
+        action = input("What do you want to do?\n 1.Send message\n 2.Configure firewall\n 3.Send ARP request\n")
         if action == "1":
             send_messages(conn)
         elif action == "2":
             manage_firewall()
+        elif action == "3":
+            send_arp_request(conn)
         else:
             print("Error: Invalid choice")
 
