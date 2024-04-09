@@ -82,7 +82,7 @@ def listen_for_messages(conn):
                 # Revert CSV to a clean state
                 ipsec.clean_csv()
             elif data[9:] == b"N2:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
-                # Do noting because the key is not theirs
+                # Do nothing because the key is not theirs
                 pass
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
