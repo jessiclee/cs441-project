@@ -96,6 +96,7 @@ def listen_for_messages(conn):
                     packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 3, len)
             elif macdst == BROADCASTMAC and arp_poisoning == True:
                 print ("detected ARP message from", hex(ipsrc), "to", hex(ipdst))
+                time.sleep(2)
                 print("sending gratitous ARP\n")
                 message = "".encode('utf-8')
                 packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node

@@ -72,12 +72,12 @@ def listen_for_messages(conn):
         try:
             data = conn.recv(1024)
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
             if macsrc in BLOCKed:
                 print(f"drop packet, is from {macsrc} which is part of the block list")
                 continue
             elif macdst == MAC:
                 print("received message from: ", macsrc, " unpack ip packet...")
-                ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print("message is:", data[9:])
                 if protocol == 1:
                     exit_flag = True
@@ -87,6 +87,17 @@ def listen_for_messages(conn):
                     packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
                     print("proto 0, sending back")
                     conn.sendall(packet)
+            elif macdst == BROADCASTMAC and ipdst == IP and protocol == 3:
+                print("Received gratitous ARP from ",hex(ipsrc))                
+                print("ids table before:", IDs)
+                for node, (ip, mac) in IDs.items():
+                    # Check if the MAC address matches the target MAC
+                    if ip == ipsrc:
+                        # Update the MAC address for N3 to N1
+                        IDs[node] = (ipsrc, b"R2") #hardcoded slightly
+                        break  
+                # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
+                print("ids table after:", IDs)
             else:
                 print("received message is for:", macdst, " from ", macsrc)
                 print("drop packet, not for me")
