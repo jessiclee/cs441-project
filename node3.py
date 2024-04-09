@@ -1,7 +1,7 @@
 import socket
 import struct
 import threading
-import ipsec
+# import ipsec
 import secrets
 import time
 
@@ -13,6 +13,8 @@ IDs = {
 }
 
 BLOCKed = {}
+
+BROADCASTMAC = b"FF"
 
 HOST = "localhost"  # Standard loopback interface address (localhost) *172.0.1.0 doesn't work for me
 PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
@@ -27,17 +29,17 @@ keys = {
 }
 
 
-def create_packet(message, ipdest, mac, protocol, length, key):
-    esp_packet = ipsec.encrypt_payload(message, key)
-    print("\nEncrypted Packet:", esp_packet)
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
-    print("IP Packet w/ Encrypted Packet:", ippack)
-    packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    print("Final Packet w/ MAC address:", packet, "\n")
-    return packet
+# def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
+#     # esp_packet = ipsec.encrypt_payload(message, key)
+#     print("\nEncrypted Packet:", esp_packet)
+#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
+#     print("IP Packet w/ Encrypted Packet:", ippack)
+#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
+#     print("Final Packet w/ MAC address:", packet, "\n")
+#     return packet
 
-def create_packet(message, ipdest, mac, protocol, length):
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
+def create_packet(message, ipsrc, ipdest, mac, protocol, length):
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
     print("ip pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     return packet
@@ -118,7 +120,7 @@ def send_messages(conn):
                 print("Please input a valid node (N1/N2)")
         try:
             node = IDs[dest]
-            packet = create_packet(message, node[0], node[1], int(proto), length)
+            packet = create_packet(message, IP, node[0], node[1], int(proto), length)
             conn.sendall(packet)
         except KeyError:
             print("Error: Sender not found")

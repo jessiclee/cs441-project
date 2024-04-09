@@ -1,7 +1,7 @@
 import socket
 import struct
 import threading
-import ipsec
+# import ipsec
 import secrets
 import time
 
@@ -32,14 +32,20 @@ attack_performed = {
 
 BROADCASTMAC = b"FF"
 
-def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
-    esp_packet = ipsec.encrypt_payload(message, key)
-    print("\nEncrypted Packet:", esp_packet)
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
-    print("IP Packet w/ Encrypted Packet:", ippack)
+def create_packet(message, ipsrc, ipdest, mac, protocol, length):
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
+    print("ip pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    print("Final Packet w/ MAC address:", packet , "\n")
     return packet
+
+# def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
+#     esp_packet = ipsec.encrypt_payload(message, key)
+#     print("\nEncrypted Packet:", esp_packet)
+#     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
+#     print("IP Packet w/ Encrypted Packet:", ippack)
+#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
+#     print("Final Packet w/ MAC address:", packet , "\n")
+#     return packet
 
 
 def create_packet_key_gen(message, ipsrc, ipdest, mac, protocol, length):
@@ -110,24 +116,24 @@ def listen_for_messages(conn):
             elif ipdst == IDS["N3"][0] and SNIFF == True:
                 print("Intercepted traffic from",macsrc, "to", macdst)
                 print("message is:", data[9:])
-            if data[9:] == b"N2:Zq6,eS2yN%sUTF)k":
-                time.sleep(2)
-                append_to_txt(secrets.token_hex(16))
-                key = ipsec.generate_key()
-                print("Current Key is: ", key)
+            # if data[9:] == b"N2:Zq6,eS2yN%sUTF)k":
+            #     time.sleep(2)
+            #     append_to_txt(secrets.token_hex(16))
+            #     key = ipsec.generate_key()
+            #     print("Current Key is: ", key)
                 
-                # Update Key Dictionary
-                ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                keys[ipsrc] = key
+            #     # Update Key Dictionary
+            #     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+            #     keys[ipsrc] = key
                 
-                # Ensure sender has enough time to retrieve the key
-                time.sleep(2)
+            #     # Ensure sender has enough time to retrieve the key
+            #     time.sleep(2)
                 
-                # Revert CSV to a clean state
-                ipsec.clean_csv()
-            elif data[9:] == b"N1:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
-                # Do noting because the key is not theirs
-                pass
+            #     # Revert CSV to a clean state
+            #     ipsec.clean_csv()
+            # elif data[9:] == b"N1:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
+            #     # Do noting because the key is not theirs
+            #     pass
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
@@ -199,24 +205,25 @@ def send_messages(conn,action):
     try:
         node = IDS[dest]
         
-        # Random String s.t. an adversary would not be able to craft a fake key gen message
-        # Unless he knows the secret hardcoded information
-        key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
-        key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), ipsrc, node[0], node[1], int(proto), length)
-        conn.sendall(key_gen_packet)
+        # # Random String s.t. an adversary would not be able to craft a fake key gen message
+        # # Unless he knows the secret hardcoded information
+        # key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
+        # key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), ipsrc, node[0], node[1], int(proto), length)
+        # conn.sendall(key_gen_packet)
         
-        # Contribute in the key generation after that
-        append_to_txt(secrets.token_hex(16))
-        time.sleep(2)
-        key = ipsec.generate_key()
+        # # Contribute in the key generation after that
+        # append_to_txt(secrets.token_hex(16))
+        # time.sleep(2)
+        # key = ipsec.generate_key()
         
-        # To check if the key is different everytime
-        print("Current Key is: ", key)
+        # # To check if the key is different everytime
+        # print("Current Key is: ", key)
         
-        # Update Key in the Dictionary
-        keys[node[0]] = key
+        # # Update Key in the Dictionary
+        # keys[node[0]] = key
         
-        packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length, key)
+        packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
+        # packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length, key)
         conn.sendall(packet)
     except KeyError:
         print("Error: Sender not found")
