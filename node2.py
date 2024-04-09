@@ -17,6 +17,7 @@ MAX_LEN = 256
 SNIFF = False
 exit_flag = False
 
+BROADCASTMAC = b"FF"
 
 def create_packet(message, ipsrc, ipdest, mac, protocol, length):
     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
@@ -37,13 +38,29 @@ def listen_for_messages(conn):
                 # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print("message is:", data[9:])
                 if protocol == 1:
-                    exit_flag = True
+                    exit_flag = True 
                     break
                 elif protocol == 0:
-                    print(macsrc)
-                    packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
+                    # print(macsrc)
+                    packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
                     print("proto 0, sending back")
                     conn.sendall(packet)
+            elif macdst == BROADCASTMAC and ipdst == IP and protocol == 2:
+                print("received ARP request from: ", hex(ipsrc), "for :", hex(ipdst) )
+                print("sending ARP reply back")
+                packet = create_packet(data[9:], ipsrc, IP, macsrc, 2, len)
+                conn.sendall(packet)
+            elif macdst == BROADCASTMAC and ipdst == IP and protocol == 3:
+                print("Received gratitous ARP from ",hex(ipsrc))                
+                print("ids table before:", IDS)
+                for node, (ip, mac) in IDS.items():
+                    # Check if the MAC address matches the target MAC
+                    if ip == ipsrc:
+                        # Update the MAC address for N3 to N1
+                        IDS[node] = (ipsrc, b"R2") #hardcoded slightly2
+                        break  
+                # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
+                print("ids table after:", IDS)
             elif ipdst == IDS["N3"][0] and SNIFF == True:
                 print("Intercepted traffic from",macsrc, "to", macdst)
                 print("message is:", data[9:])

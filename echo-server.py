@@ -22,6 +22,8 @@ R2_IDS = {
     0x2A: b'N2',
     0x2B: b'N3',
 }
+
+BROADCASTMAC = b"FF"
  
 s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 s1.bind((HOST1, PORT1))
@@ -41,6 +43,11 @@ def create_ether_frame(data, srcmac, dstmac, length):
     return packet
 
 def local_broadcast(data):
+    n2.sendall(data)
+    n3.sendall(data)
+
+def broadcast(data):
+    n1.sendall(data)
     n2.sendall(data)
     n3.sendall(data)
 
@@ -74,13 +81,34 @@ def receive_packets(interface_socket):
                 break
             #unpack ethernet frame and check destination MAC to know which interface to forward to
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-            print(f"Received packet from {macsrc}: {data}")
+            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+            print("\nprotocol: ", protocol )
+            print(f"Received packet from {macsrc}: {data}\n")
             if macdst == MAC1:
                 threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 2,)).start()
             elif macdst == MAC2:
                 threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 1)).start()
             elif macdst in R2_IDS.values():
+                print("sending local broadcast\n")
                 threading.Thread(target=local_broadcast, args=(data, )).start()
+            elif macdst == BROADCASTMAC:
+                print("sending broadcast\n")
+                threading.Thread(target=broadcast, args=(data, )).start()
+            if protocol == 3:
+                for ip, mac in R1_IDS.items():
+                    if ip == ipsrc:
+                        print("R1 table before: ",R1_IDS)
+                        # Update the MAC address for N3 to N1
+                        R1_IDS[ip] = b"N1" #hardcode
+                        print("R1 table after: ",R1_IDS)
+                        break  # Stop iterating once the MAC address is found
+                for ip, mac in R2_IDS.items():
+                    if ip == ipsrc:
+                        print("R2 table before: ",R2_IDS)
+                        # Update the MAC address for N3 to N1
+                        R2_IDS[ip] = b"N1" #hardcode
+                        print("R2 table after: ",R2_IDS)
+                        break  # Stop iterating once the MAC address is found
         except ConnectionResetError:
             print("connection closed")
             break

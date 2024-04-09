@@ -18,8 +18,10 @@ MAC = b"N3"
 MAX_LEN = 256
 exit_flag = False
 
-def create_packet(message, ipdest, mac, protocol, length):
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
+BROADCASTMAC = b"FF"
+
+def create_packet(message, ipsrc, ipdest, mac, protocol, length):
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
     print("ip pack created:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     print("final packet:", packet)
@@ -31,21 +33,32 @@ def listen_for_messages(conn):
         try:
             data = conn.recv(1024)
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
             if macsrc in BLOCKed:
                 print(f"drop packet, is from {macsrc} which is part of the block list")
                 continue
             elif macdst == MAC:
                 print("received message from: ", macsrc, " unpack ip packet...")
-                ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 print("message is:", data[9:])
                 if protocol == 1:
                     exit_flag = True
                     break
                 elif protocol == 0:
                     print(macsrc)
-                    packet = create_packet(data[9:], ipsrc, macsrc, 3, len)
+                    packet = create_packet(data[9:], IP, ipsrc, macsrc, 5, len)
                     print("proto 0, sending back")
                     conn.sendall(packet)
+            elif macdst == BROADCASTMAC and ipdst == IP and protocol == 3:
+                print("Received gratitous ARP from ",hex(ipsrc))
+                print("ids table before:", IDs)
+                for node, (ip, mac) in IDs.items():
+                    # Check if the MAC address matches the target MAC
+                    if ip == ipsrc:
+                        #updated the MAC address of N2 to N1
+                        IDs[node] = (ipsrc, b"R2") #hardcoded slightly
+                        break  
+                # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
+                print("ids table after:", IDs)
             else:
                 print("received message is for:", macdst, " from ", macsrc)
                 print("drop packet, not for me")
@@ -69,7 +82,7 @@ def send_messages(conn):
         dest = input("Who do you want to send it to?: \n")
         try:
             node = IDs[dest]
-            packet = create_packet(message, node[0], node[1], int(proto), length)
+            packet = create_packet(message, IP, node[0], node[1], int(proto), length)
             conn.sendall(packet)
         except KeyError:
             print("sender not found, back to begining")
@@ -97,14 +110,24 @@ def manage_firewall():
         else:
             print(f"{choice} is not within the list! Try again!")
             continue
+        
+def send_arp_request(conn):
+    dest = input("who are we sending the request to?\n")
+    node = IDs[dest]
+    print("sending ARP request")
+    message = "".encode('utf-8')
+    packet = create_packet(message, IP, node[0], BROADCASTMAC, 2, 0)
+    conn.sendall(packet)
 
 def do_actions(conn):
     while not exit_flag: 
-        action = input("What do you want to do?\n 1.Send message\n 2.Configure firewall\n")
+        action = input("What do you want to do?\n 1.Send message\n 2.Configure firewall\n 3.Send ARP request\n")
         if action == "1":
             send_messages(conn)
         elif action == "2":
             manage_firewall()
+        elif action == "3":
+            send_arp_request(conn)
         else:
             print("invalid choice!")
 
