@@ -79,20 +79,20 @@ def listen_for_messages(conn):
             data = conn.recv(1024)
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
             ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            print("\nmacdst is:", macdst)
-            if macdst == MAC:
-                print("received message from: ", macsrc, " unpack ip packet...")
-                # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                print("message is:", data[9:])
-                if protocol == 1:
-                    exit_flag = True
-                    break
-                elif protocol == 0:
-                    packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
-                    print("proto 0, sending back")
-                    conn.sendall(packet)
-            elif macdst == BROADCASTMAC and protocol == 2:
-                print("received ARP request from: ", hex(ipsrc), "asking for :", hex(ipdst) )
+            print("macdst is:", macdst)
+            # if macdst == MAC:
+            #     print("received message from: ", macsrc, " unpack ip packet...")
+            #     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+            #     print("message is:", data[9:])
+            #     if protocol == 1:
+            #         exit_flag = True
+            #         break
+            #     elif protocol == 0:
+            #         packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
+            #         print("proto 0, sending back")
+            #         conn.sendall(packet)
+            # elif macdst == BROADCASTMAC and protocol == 2:
+            #     print("received ARP request from: ", hex(ipsrc), "asking for :", hex(ipdst) )
             if data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
                 time.sleep(2)
                 # ipsec.set_input(secrets.token_hex(16))
@@ -133,9 +133,9 @@ def listen_for_messages(conn):
                                 decrypted_payload = b'DOS attack'
                             else:
                                 decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                            print("Plaintext Message: ", decrypted_payload)
-                            packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
-                            conn.sendall(packet)
+                                print("Plaintext Message: ", decrypted_payload)
+                                packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
+                                conn.sendall(packet)
                         except KeyError:
                             print("Key not found")
                 else:
