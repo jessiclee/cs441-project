@@ -1,7 +1,7 @@
 import socket
 import struct
 import threading
-# import ipsec
+import ipsec
 import time
 import secrets
 
@@ -29,20 +29,20 @@ keys = {
     0x2B: b'}1I\xf0\xc3l\xbe\xc3\xf9_\xd1\x00\xe9\xbf\x01\x9b\x9e\xaa\x04!\x01\xaeP\x8b\xf8\xc4\x05h\xba\xb8>W'
 }
 
-# def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
-#     esp_packet = ipsec.encrypt_payload(message, key)
-#     print("\nEncrypted Packet:", esp_packet)
-#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
-#     print("IP Packet w/ Encrypted Packet:", ippack)
-#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-#     print("Final Packet w/ MAC address:", packet , "\n")
-#     return packet
-
-def create_packet(message, ipsrc, ipdest, mac, protocol, length):
-    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
-    print("ip pack created:", ippack)
+def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
+    esp_packet = ipsec.encrypt_payload(message, key)
+    print("\nEncrypted Packet:", esp_packet)
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
+    print("IP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
+    print("Final Packet w/ MAC address:", packet , "\n")
     return packet
+
+# def create_packet(message, ipsrc, ipdest, mac, protocol, length):
+#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
+#     print("ip pack created:", ippack)
+#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
+#     return packet
 
 def create_packet_key_gen(message, ipdest, mac, protocol, length):
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
@@ -93,54 +93,54 @@ def listen_for_messages(conn):
                     conn.sendall(packet)
             elif macdst == BROADCASTMAC and protocol == 2:
                 print("received ARP request from: ", hex(ipsrc), "asking for :", hex(ipdst) )
-            # if data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
-            #     time.sleep(2)
-            #     # ipsec.set_input(secrets.token_hex(16))
-            #     append_to_txt(secrets.token_hex(16))
-            #     key = ipsec.generate_key()
-            #     print("Current Key is: ", key)
+            if data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
+                time.sleep(2)
+                # ipsec.set_input(secrets.token_hex(16))
+                append_to_txt(secrets.token_hex(16))
+                key = ipsec.generate_key()
+                print("Current Key is: ", key)
                 
-            #     # Update Key Dictionary
-            #     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            #     keys[ipsrc] = key
+                # Update Key Dictionary
+                ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+                keys[ipsrc] = key
                 
-            #     # Ensure sender has enough time to retrieve the key
-            #     time.sleep(2)
+                # Ensure sender has enough time to retrieve the key
+                time.sleep(2)
                 
-            #     # Revert CSV to a clean state
-            #     ipsec.clean_csv()
-            # elif data[9:] == b"N2:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
-            #     # Do nothing because the key is not theirs
-            #     pass
-            # else:
-            #     macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-            #     if macdst == MAC:
-            #         print("\n Packet w/ MAC address:", data)
-            #         ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    
-            #         print("\n Packet w/ IP address:", data[5:])
-                    
-            #         exists, source = val_in_dict(ipsrc, 0, IDS)
-            #         print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
-            #         print("Encrypted packet is: ", data[9:])
-            #         if protocol == 1:
-            #             exit_flag = True
-            #             break
-            #         elif protocol == 0:
-            #             try:
-            #                 key = keys[ipsrc]
-            #                 if data[9:19] == b'DOS attack':
-            #                     decrypted_payload = b'DOS attack'
-            #                 else:
-            #                     decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-            #                 print("Plaintext Message: ", decrypted_payload)
-            #                 packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
-            #                 conn.sendall(packet)
-            #             except KeyError:
-            #                 print("Key not found")
+                # Revert CSV to a clean state
+                ipsec.clean_csv()
+            elif data[9:] == b"N2:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
+                # Do nothing because the key is not theirs
+                pass
             else:
-                    print("Received message is for: ", macdst, " from ", macsrc)
-                    print("Dropping packet")
+                macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+                if macdst == MAC:
+                    print("\n Packet w/ MAC address:", data)
+                    ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+                    
+                    print("\n Packet w/ IP address:", data[5:])
+                    
+                    exists, source = val_in_dict(ipsrc, 0, IDS)
+                    print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
+                    print("Encrypted packet is: ", data[9:])
+                    if protocol == 1:
+                        exit_flag = True
+                        break
+                    elif protocol == 0:
+                        try:
+                            key = keys[ipsrc]
+                            if data[9:19] == b'DOS attack':
+                                decrypted_payload = b'DOS attack'
+                            else:
+                                decrypted_payload = ipsec.decrypt_packet(data[9:], key)
+                            print("Plaintext Message: ", decrypted_payload)
+                            packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
+                            conn.sendall(packet)
+                        except KeyError:
+                            print("Key not found")
+                else:
+                        print("Received message is for: ", macdst, " from ", macsrc)
+                        print("Dropping packet")
             if not data:
                 break
         except ConnectionResetError:
@@ -161,10 +161,35 @@ def send_messages(conn):
     dest = input("Who do you want to send it to?: \n")
     try:
         node = IDS[dest]
-        packet = create_packet(message, IP, node[0], node[1], int(proto), length)
+        # Random String s.t. an adversary would not be able to craft a fake key gen message
+        # Unless he knows the secret hardcoded information
+        key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
+        key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), node[0], node[1], int(proto), length)
+        conn.sendall(key_gen_packet)
+        
+        # Contribute in the key generation after that
+        append_to_txt(secrets.token_hex(16))
+        time.sleep(2)
+        key = ipsec.generate_key()
+        
+        # To check if the key is different everytime
+        print("Current Key is: ", key)
+        
+        # Update Key in the Dictionary
+        keys[node[0]] = key
+        
+        # Send the actual packet
+        packet = create_packet(message, node[0], node[1], int(proto), length, key)
         conn.sendall(packet)
+        # Update key
+        # key = keys[node[0]]
+        # if key:
+        #     packet = create_packet(message, node[0], node[1], int(proto), length, key)
+        #     conn.sendall(packet)
+        # if not key:
+        #     print("Key not found")
     except KeyError:
-        print("sender not found, back to begining")
+        print("Error: Sender not found")
         pass
         
 def do_actions(conn):
@@ -182,60 +207,6 @@ def do_actions(conn):
                 arp_poisoning = True 
         else:
             print("invalid choice!")
-        while True:
-            message = input("Enter message: ").encode('utf-8')
-            length = len(message)
-            if length > MAX_LEN:
-                print ("Please input a message within the character limit " + MAX_LEN)
-            else:
-                break
-        while True:
-            proto = input("Choose protocol (0/1): ")
-            if (proto == "0" or proto == "1"):
-                break
-            else:
-                print("Please input a valid protocol, 0 (Ping Protocol) or 1 (Kill Protocol)")
-                
-        while True:
-            dest = input("Choose recipient (N2/N3): ")
-            if (dest == "N2" or dest == "N3"):
-                break
-            else:
-                print("Please input a valid node (N2/N3)")
-        try:
-            node = IDS[dest]
-            
-            # Random String s.t. an adversary would not be able to craft a fake key gen message
-            # Unless he knows the secret hardcoded information
-            key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
-            key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), node[0], node[1], int(proto), length)
-            conn.sendall(key_gen_packet)
-            
-            # Contribute in the key generation after that
-            append_to_txt(secrets.token_hex(16))
-            time.sleep(2)
-            key = ipsec.generate_key()
-            
-            # To check if the key is different everytime
-            print("Current Key is: ", key)
-            
-            # Update Key in the Dictionary
-            keys[node[0]] = key
-            
-            # Send the actual packet
-            packet = create_packet(message, IP, node[0], node[1], int(proto), length, key)
-            # packet = create_packet(message, IP, node[0], node[1], int(proto), length)
-            conn.sendall(packet)
-            # Update key
-            key = keys[node[0]]
-            if key:
-                packet = create_packet(message, node[0], node[1], int(proto), length, key)
-                conn.sendall(packet)
-            if not key:
-                print("Key not found")
-        except KeyError:
-            print("Error: Sender not found")
-            pass
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
