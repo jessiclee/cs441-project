@@ -29,20 +29,20 @@ keys = {
 }
 
 
-# def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
-#     # esp_packet = ipsec.encrypt_payload(message, key)
-#     print("\nEncrypted Packet:", esp_packet)
-#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
-#     print("IP Packet w/ Encrypted Packet:", ippack)
-#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-#     print("Final Packet w/ MAC address:", packet, "\n")
-#     return packet
-
-def create_packet(message, ipsrc, ipdest, mac, protocol, length):
-    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
-    print("ip pack created:", ippack)
+def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
+    esp_packet = ipsec.encrypt_payload(message, key)
+    print("\nEncrypted Packet:", esp_packet)
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
+    print("IP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
+    print("Final Packet w/ MAC address:", packet, "\n")
     return packet
+
+# def create_packet(message, ipsrc, ipdest, mac, protocol, length):
+#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
+#     print("ip pack created:", ippack)
+#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
+#     return packet
 
 def append_to_txt(data):
     try:
@@ -62,7 +62,7 @@ def append_to_txt(data):
 def val_in_dict(val,pos, diction):
     for key, value in diction.items():
         # Check if the second element of the value matches the given value
-        if value[pos] == val:
+        if value[pos] == val:\
             return True, key
     return False, "NIL"
 
@@ -176,11 +176,12 @@ def manage_firewall():
             print("Error: Invalid choice")
         
 def send_arp_request(conn):
-    dest = input("who are we sending the request to?\n")
-    node = IDs[dest]
+    dest = input("which IP are we looking for? (0x1A/0x2A)\n")
+    # node = IDs[dest]
+    int_dest = int(dest,16)
     print("sending ARP request")
     message = "".encode('utf-8')
-    packet = create_packet(message, IP, node[0], BROADCASTMAC, 2, 0)
+    packet = create_packet(message, IP, int_dest, BROADCASTMAC, 2, 0)
     conn.sendall(packet)
 
 def do_actions(conn):

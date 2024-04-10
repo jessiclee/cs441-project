@@ -47,11 +47,12 @@ def local_broadcast(data):
     n3.sendall(data)
 
 def broadcast(data):
+    print("sending broadcast\n")
     n1.sendall(data)
     n2.sendall(data)
     n3.sendall(data)
 
-def handle_ip_packet(data, interf, local):
+def handle_ip_packet(data, macsrc, local):
     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[:4])
     try:
         if local == 1:
@@ -66,8 +67,19 @@ def handle_ip_packet(data, interf, local):
             #emulate ethernet broadcast, send to all?
             n2.sendall(pack)
             n3.sendall(pack)
+        elif local == 3:
+            if ipdst in R2_IDS:
+                dstmac = R2_IDS[ipdst]
+            else:
+                dstmac = R1_IDS[ipdst]
+            pack = create_ether_frame(data, dstmac, macsrc, len)
+            if macsrc in R2_IDS.values():
+                n2.sendall(pack)
+                n3.sendall(pack)
+            else:
+                n1.sendall(pack)
         else:
-            print("something went wrong, info here, ", data, interf, local)
+            print("something went wrong, info here, ", data, macsrc, local)
     except KeyError:
         print(f"something went wrong: ipdst {ipdst} ipsrc {ipsrc} local{local}")
         print(R1_IDS)
@@ -91,9 +103,14 @@ def receive_packets(interface_socket):
                 print("sending local broadcast\n")
                 threading.Thread(target=local_broadcast, args=(data, )).start()
             elif macdst == BROADCASTMAC:
-                print("sending broadcast\n")
+                # print("sending broadcast\n")
                 threading.Thread(target=broadcast, args=(data, )).start()
+            if protocol == 2: 
+                print("received ARP request from: ", hex(ipsrc), "for :", hex(ipdst) )
+                print("sending ARP reply back")
+                threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 3)).start()
             if protocol == 3:
+                print("received gratitous arp from ",hex(ipsrc))
                 for ip, mac in R1_IDS.items():
                     if ip == ipsrc:
                         print("R1 table before: ",R1_IDS)
@@ -104,8 +121,8 @@ def receive_packets(interface_socket):
                 for ip, mac in R2_IDS.items():
                     if ip == ipsrc:
                         print("R2 table before: ",R2_IDS)
-                        # Update the MAC address for N3 to N1
-                        R2_IDS[ip] = b"N1" #hardcode
+                        # Update the MAC address for N3 to N2
+                        R2_IDS[ip] = b"N2" #hardcode
                         print("R2 table after: ",R2_IDS)
                         break  # Stop iterating once the MAC address is found
         except ConnectionResetError:

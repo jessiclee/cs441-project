@@ -15,9 +15,11 @@ IDS = {
 HOST = "localhost"  # Standard loopback interface address (localhost)
 PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
 IP = 0x2A
+IP2 = 0x21
 MAC = b"N2"
 MAX_LEN = 256
 SNIFF = False
+ARP_poisoning = False
 exit_flag = False
 wrong_key = b'\xd8c\xa6\xdd\r\xf5@\xd6&Y\x96\xc1\xd0\xf6d\x87\xe81\x07\x0c\xde\xbbN"\xa4\xf3\x9c\x83\x9d5t3'
 keys = {
@@ -32,20 +34,20 @@ attack_performed = {
 
 BROADCASTMAC = b"FF"
 
-def create_packet(message, ipsrc, ipdest, mac, protocol, length):
-    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
-    print("ip pack created:", ippack)
-    packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    return packet
-
-# def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
-#     esp_packet = ipsec.encrypt_payload(message, key)
-#     print("\nEncrypted Packet:", esp_packet)
-#     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
-#     print("IP Packet w/ Encrypted Packet:", ippack)
+# def create_packet(message, ipsrc, ipdest, mac, protocol, length):
+#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
+#     print("ip pack created:", ippack)
 #     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-#     print("Final Packet w/ MAC address:", packet , "\n")
 #     return packet
+
+def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
+    esp_packet = ipsec.encrypt_payload(message, key)
+    print("\nEncrypted Packet:", esp_packet)
+    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
+    print("IP Packet w/ Encrypted Packet:", ippack)
+    packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
+    print("Final Packet w/ MAC address:", packet , "\n")
+    return packet
 
 
 def create_packet_key_gen(message, ipsrc, ipdest, mac, protocol, length):
@@ -97,47 +99,41 @@ def listen_for_messages(conn):
                     packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
                     print("proto 0, sending back")
                     conn.sendall(packet)
-            elif macdst == BROADCASTMAC and ipdst == IP and protocol == 2:
-                print("received ARP request from: ", hex(ipsrc), "for :", hex(ipdst) )
-                print("sending ARP reply back")
-                packet = create_packet(data[9:], ipsrc, IP, macsrc, 2, len)
-                conn.sendall(packet)
-            elif macdst == BROADCASTMAC and ipdst == IP and protocol == 3:
-                print("Received gratitous ARP from ",hex(ipsrc))                
-                print("ids table before:", IDS)
-                for node, (ip, mac) in IDS.items():
-                    # Check if the MAC address matches the target MAC
-                    if ip == ipsrc:
-                        # Update the MAC address for N3 to N1
-                        IDS[node] = (ipsrc, b"R2") #hardcoded slightly
-                        break  
-                # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
-                print("ids table after:", IDS)
+            elif macdst == BROADCASTMAC and protocol == 2:
+                print("received ARP request from: ", hex(ipsrc), "asking for :", hex(ipdst) )
             elif ipdst == IDS["N3"][0] and SNIFF == True:
                 print("Intercepted traffic from",macsrc, "to", macdst)
                 print("message is:", data[9:])
-            # if data[9:] == b"N2:Zq6,eS2yN%sUTF)k":
-            #     time.sleep(2)
-            #     append_to_txt(secrets.token_hex(16))
-            #     key = ipsec.generate_key()
-            #     print("Current Key is: ", key)
+            if data[9:] == b"N2:Zq6,eS2yN%sUTF)k":
+                time.sleep(2)
+                append_to_txt(secrets.token_hex(16))
+                key = ipsec.generate_key()
+                print("Current Key is: ", key)
                 
-            #     # Update Key Dictionary
-            #     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            #     keys[ipsrc] = key
+                # Update Key Dictionary
+                ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
+                keys[ipsrc] = key
                 
-            #     # Ensure sender has enough time to retrieve the key
-            #     time.sleep(2)
+                # Ensure sender has enough time to retrieve the key
+                time.sleep(2)
                 
-            #     # Revert CSV to a clean state
-            #     ipsec.clean_csv()
-            # elif data[9:] == b"N1:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
-            #     # Do noting because the key is not theirs
-            #     pass
+                # Revert CSV to a clean state
+                ipsec.clean_csv()
+            elif data[9:] == b"N1:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
+                # Do noting because the key is not theirs
+                pass
+            if macdst == BROADCASTMAC and ARP_poisoning == True:
+                print ("detected ARP message from", hex(ipsrc), "to", hex(ipdst))
+                time.sleep(2)
+                print("sending gratitous ARP\n")
+                message = "".encode('utf-8')
+                # packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node
+                packet = create_packet(message, ipsrc, IP2, BROADCASTMAC, 3, 0) #this is packet to router from "N3"
+                conn.sendall(packet)
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                print(ipsrc, ipdst, protocol, len)
+                # print(ipsrc, ipdst, protocol, len)
                 if macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
                     
@@ -174,8 +170,6 @@ def listen_for_messages(conn):
             break
 
 def send_messages(conn,action):
-    # while not exit_flag:
-    # action = input("What do you want to do?\n 1.Send message\n 2.Send a spoofed message\n")
     if action =='2':
         spoofdest = input("Enter the ID that you want to spoof (N1/N3):")
         spoofnode = IDS.get(spoofdest)
@@ -205,25 +199,25 @@ def send_messages(conn,action):
     try:
         node = IDS[dest]
         
-        # # Random String s.t. an adversary would not be able to craft a fake key gen message
-        # # Unless he knows the secret hardcoded information
-        # key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
-        # key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), ipsrc, node[0], node[1], int(proto), length)
-        # conn.sendall(key_gen_packet)
+        # Random String s.t. an adversary would not be able to craft a fake key gen message
+        # Unless he knows the secret hardcoded information
+        key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
+        key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), ipsrc, node[0], node[1], int(proto), length)
+        conn.sendall(key_gen_packet)
         
-        # # Contribute in the key generation after that
-        # append_to_txt(secrets.token_hex(16))
-        # time.sleep(2)
-        # key = ipsec.generate_key()
+        # Contribute in the key generation after that
+        append_to_txt(secrets.token_hex(16))
+        time.sleep(2)
+        key = ipsec.generate_key()
         
-        # # To check if the key is different everytime
-        # print("Current Key is: ", key)
+        # To check if the key is different everytime
+        print("Current Key is: ", key)
         
-        # # Update Key in the Dictionary
-        # keys[node[0]] = key
+        # Update Key in the Dictionary
+        keys[node[0]] = key
         
-        packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
-        # packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length, key)
+        # packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
+        packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length, key)
         conn.sendall(packet)
     except KeyError:
         print("Error: Sender not found")
@@ -247,9 +241,9 @@ def dos_attack(conn, target, attack_limit, final=False):
 def do_actions(conn):
     global attack_performed
     while not exit_flag: 
-        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n"
+        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. start ARP poisoning"
         if not attack_performed["N1"] or not attack_performed["N3"]:
-            prompt +=  " 4. Perform DOS attack\n"
+            prompt +=  " 5. Perform DOS attack\n"
         action = input(prompt)
         if action == "1" or action == '2':
             send_messages(conn, action)
@@ -272,6 +266,14 @@ def do_actions(conn):
                     print("Sniffing already stopped")
                     continue
         elif action == "4":
+            global ARP_poisoning
+            if ARP_poisoning == False:
+                print("ARP poisoning started")
+                ARP_poisoning = True
+            else:
+                print("ARP poisoning stopped")
+                ARP_poisoning = False
+        elif action == "5":
             target = str(input("Enter target (N1/N3): "))
             if not (target == "N1" or target == "N3"):
                 print("Error: Invalid target")

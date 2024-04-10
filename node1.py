@@ -14,6 +14,7 @@ IDS = {
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
 PORT = 65432  # The port used by the server
+IP1 = 0x11
 IP = 0x1A
 MAC = b"N1"
 MAX_LEN = 256
@@ -90,20 +91,8 @@ def listen_for_messages(conn):
                     packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
                     print("proto 0, sending back")
                     conn.sendall(packet)
-                elif protocol == 2:
-                    print("received ARP reply\n")
-                    print("sending gratitous ARP\n")
-                    packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 3, len)
-            elif macdst == BROADCASTMAC and arp_poisoning == True:
-                print ("detected ARP message from", hex(ipsrc), "to", hex(ipdst))
-                time.sleep(2)
-                print("sending gratitous ARP\n")
-                message = "".encode('utf-8')
-                packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node
-                packet2 = create_packet(message, ipdst, ipsrc, BROADCASTMAC, 3, 0) #this is packet to N3 from "N2"
-                conn.sendall(packet1)
-                conn.sendall(packet2)
-                break
+            elif macdst == BROADCASTMAC and protocol == 2:
+                print("received ARP request from: ", hex(ipsrc), "asking for :", hex(ipdst) )
             # if data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
             #     time.sleep(2)
             #     # ipsec.set_input(secrets.token_hex(16))
@@ -145,7 +134,7 @@ def listen_for_messages(conn):
             #                 else:
             #                     decrypted_payload = ipsec.decrypt_packet(data[9:], key)
             #                 print("Plaintext Message: ", decrypted_payload)
-            #                 packet = create_packet(decrypted_payload, ipsrc, macsrc, 3, len, key)
+            #                 packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
             #                 conn.sendall(packet)
             #             except KeyError:
             #                 print("Key not found")
@@ -234,16 +223,16 @@ def do_actions(conn):
             keys[node[0]] = key
             
             # Send the actual packet
-            # packet = create_packet(message, node[0], node[1], int(proto), length, key)
-            packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
+            packet = create_packet(message, IP, node[0], node[1], int(proto), length, key)
+            # packet = create_packet(message, IP, node[0], node[1], int(proto), length)
             conn.sendall(packet)
             # Update key
-            # key = keys[node[0]]
-            # if key:
-            #     packet = create_packet(message, node[0], node[1], int(proto), length, key)
-            #     conn.sendall(packet)
-            # if not key:
-            #     print("Key not found")
+            key = keys[node[0]]
+            if key:
+                packet = create_packet(message, node[0], node[1], int(proto), length, key)
+                conn.sendall(packet)
+            if not key:
+                print("Key not found")
         except KeyError:
             print("Error: Sender not found")
             pass
