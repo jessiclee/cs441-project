@@ -19,7 +19,7 @@ IP = 0x1A
 MAC = b"N1"
 MAX_LEN = 256
 exit_flag = False
-arp_poisoning = False
+# arp_poisoning = False
 
 BROADCASTMAC = b"FF"
 
@@ -29,10 +29,10 @@ keys = {
     0x2B: b'}1I\xf0\xc3l\xbe\xc3\xf9_\xd1\x00\xe9\xbf\x01\x9b\x9e\xaa\x04!\x01\xaeP\x8b\xf8\xc4\x05h\xba\xb8>W'
 }
 
-def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
+def create_packet(message, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
     print("\nEncrypted Packet:", esp_packet)
-    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
+    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
     print("IP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     print("Final Packet w/ MAC address:", packet , "\n")
@@ -73,7 +73,7 @@ def val_in_dict(val,pos, diction):
 
 def listen_for_messages(conn):
     global exit_flag
-    global arp_poisoning
+    # global arp_poisoning
     while True:
         try:
             data = conn.recv(1024)
@@ -194,17 +194,17 @@ def send_messages(conn):
         
 def do_actions(conn):
     while not exit_flag: 
-        action = input("What do you want to do?\n 1.Send message\n 2.start/stop arp poisoning\n")
+        action = input("What do you want to do?\n 1.Send message\n")
         if action == "1":
             send_messages(conn)
-        elif action == "2":
-            global arp_poisoning 
-            if arp_poisoning == True:
-                print("arp poisoning stopped\n")
-                arp_poisoning = False
-            else:
-                print("arp poisoning started\n")
-                arp_poisoning = True 
+        # elif action == "2":
+        #     global arp_poisoning 
+        #     if arp_poisoning == True:
+        #         print("arp poisoning stopped\n")
+        #         arp_poisoning = False
+        #     else:
+        #         print("arp poisoning started\n")
+        #         arp_poisoning = True 
         else:
             print("invalid choice!")
 

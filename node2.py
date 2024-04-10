@@ -122,14 +122,6 @@ def listen_for_messages(conn):
             elif data[9:] == b"N1:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
                 # Do noting because the key is not theirs
                 pass
-            if macdst == BROADCASTMAC and ARP_poisoning == True:
-                print ("detected ARP message from", hex(ipsrc), "to", hex(ipdst))
-                time.sleep(2)
-                print("sending gratitous ARP\n")
-                message = "".encode('utf-8')
-                # packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node
-                packet = create_packet(message, ipsrc, IP2, BROADCASTMAC, 3, 0) #this is packet to router from "N3"
-                conn.sendall(packet)
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
@@ -156,6 +148,14 @@ def listen_for_messages(conn):
                         except KeyError:
                             print(ipsrc, type(ipsrc))
                             print("Key not found")
+                elif macdst == BROADCASTMAC and ARP_poisoning == True:
+                    print ("detected ARP message from", hex(ipsrc), "to", hex(ipdst))
+                    time.sleep(2)
+                    print("sending gratitous ARP\n")
+                    message = "".encode('utf-8')
+                    # packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node
+                    packet = create_packet(message, ipsrc, IP2, BROADCASTMAC, 3, 0) #this is packet to router from "N3"
+                    conn.sendall(packet)
                 elif ipdst == IDS["N3"][0] and SNIFF == True:
                     print("Intercepted traffic from", macsrc, "to", macdst)
                     print("Message:", data[9:])
@@ -170,12 +170,11 @@ def listen_for_messages(conn):
             break
 
 def send_messages(conn,action):
+    ipsrc = IP
     if action =='2':
         spoofdest = input("Enter the ID that you want to spoof (N1/N3):")
         spoofnode = IDS.get(spoofdest)
         ipsrc = spoofnode[0]
-    elif action == "1":
-        ipsrc = IP
     while True:
         message = input("Enter message: ").encode('utf-8')
         length = len(message)
@@ -241,7 +240,7 @@ def dos_attack(conn, target, attack_limit, final=False):
 def do_actions(conn):
     global attack_performed
     while not exit_flag: 
-        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. start ARP poisoning"
+        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. start ARP poisoning\n"
         if not attack_performed["N1"] or not attack_performed["N3"]:
             prompt +=  " 5. Perform DOS attack\n"
         action = input(prompt)
