@@ -29,10 +29,10 @@ keys = {
 }
 
 
-def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
+def create_packet(message, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
     print("\nEncrypted Packet:", esp_packet)
-    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
+    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
     print("IP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     print("Final Packet w/ MAC address:", packet, "\n")
@@ -99,6 +99,7 @@ def listen_for_messages(conn):
                 pass
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+                ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 is_blocked, k = val_in_dict(macsrc, 1, BLOCKed)
                 if is_blocked:
                     print(f"Dropping packet as sender is in blocked list {k}")
@@ -116,8 +117,6 @@ def listen_for_messages(conn):
                     print("ids table after:", IDs)
                 elif macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
-                    
-                    ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                     print("Packet w/ IP address:", data[5:])
                     print("Encrypted Packet is: ", data[9:], "\n")
                     if protocol == 1:
@@ -131,7 +130,7 @@ def listen_for_messages(conn):
                             else:
                                 decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                             print("Plaintext Message: ", decrypted_payload)
-                            packet = create_packet(decrypted_payload, ipsrc, macsrc, 3, len, key)
+                            packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
                             conn.sendall(packet)
                         except KeyError:
                             print("Key not found")
@@ -233,12 +232,14 @@ def manage_firewall():
             print("Error: Invalid choice")
         
 def send_arp_request(conn):
-    dest = input("which IP are we looking for? (0x1A/0x2A)\n")
+    dest = input("what IP are we looking for? (1A/2A)?\n")
     # node = IDs[dest]
-    int_dest = int(dest,16)
+    # print("dest:", dest)
+    dest_int = int(dest,16)
+    # print("int_dest", int_dest)
     print("sending ARP request")
-    message = "".encode('utf-8')
-    packet = create_packet(message, IP, int_dest, BROADCASTMAC, 2, 0)
+    message = str(dest_int).encode('utf-8')
+    packet = create_packet_key_gen(message, IP, BROADCASTMAC, 2, len(message))
     conn.sendall(packet)
 
 def do_actions(conn):

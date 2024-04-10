@@ -15,7 +15,7 @@ IDS = {
 HOST = "localhost"  # Standard loopback interface address (localhost)
 PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
 IP = 0x2A
-IP2 = 0x21
+# IP2 = 0x21
 MAC = b"N2"
 MAX_LEN = 256
 SNIFF = False
@@ -43,7 +43,7 @@ BROADCASTMAC = b"FF"
 def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
     print("\nEncrypted Packet:", esp_packet)
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + esp_packet
     print("IP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     print("Final Packet w/ MAC address:", packet , "\n")
@@ -51,7 +51,7 @@ def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
 
 
 def create_packet_key_gen(message, ipsrc, ipdest, mac, protocol, length):
-    ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
+    ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     return packet
 
@@ -143,18 +143,18 @@ def listen_for_messages(conn):
                             # key = wrong_key
                             decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                             print("Plaintext Message: ", decrypted_payload)
-                            packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 3, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
+                            packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 5, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
                             conn.sendall(packet)
                         except KeyError:
                             print(ipsrc, type(ipsrc))
                             print("Key not found")
-                elif macdst == BROADCASTMAC and ARP_poisoning == True:
-                    print ("detected ARP message from", hex(ipsrc), "to", hex(ipdst))
+                elif macdst == BROADCASTMAC and protocol == 2 and ARP_poisoning == True:
+                    print ("detected ARP message from", hex(ipsrc), "asking for: ", data[9:])
                     time.sleep(2)
                     print("sending gratitous ARP\n")
-                    message = "".encode('utf-8')
+                    message = "it me".encode('utf-8')
                     # packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node
-                    packet = create_packet(message, ipsrc, IP2, BROADCASTMAC, 3, 0) #this is packet to router from "N3"
+                    packet = create_packet_key_gen(message, int(data[9:]), ipsrc, BROADCASTMAC, 3, 5) #this is packet to router from "N3"
                     conn.sendall(packet)
                 elif ipdst == IDS["N3"][0] and SNIFF == True:
                     print("Intercepted traffic from", macsrc, "to", macdst)
@@ -240,9 +240,9 @@ def dos_attack(conn, target, attack_limit, final=False):
 def do_actions(conn):
     global attack_performed
     while not exit_flag: 
-        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. start ARP poisoning\n"
+        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. start ARP poisoning\n 5. Send arp poision to router\n"
         if not attack_performed["N1"] or not attack_performed["N3"]:
-            prompt +=  " 5. Perform DOS attack\n"
+            prompt +=  " 6. Perform DOS attack\n"
         action = input(prompt)
         if action == "1" or action == '2':
             send_messages(conn, action)
@@ -273,6 +273,10 @@ def do_actions(conn):
                 print("ARP poisoning stopped")
                 ARP_poisoning = False
         elif action == "5":
+            packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, BROADCASTMAC, 3, 5) #this is packet to router from "N3"
+            print("pretend to be N3, send the following message:")
+            conn.sendall(packet)
+        elif action == "6":
             target = str(input("Enter target (N1/N3): "))
             if not (target == "N1" or target == "N3"):
                 print("Error: Invalid target")

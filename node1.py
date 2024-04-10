@@ -5,7 +5,7 @@ import ipsec
 import time
 import secrets
 
-IDS = {
+IDs = {
     "N1": (0x1A,  b'N1'),
     "N2": (0x2A, b'R1'),
     "N3": (0x2B, b'R1')
@@ -120,7 +120,7 @@ def listen_for_messages(conn):
                     
                     print("\n Packet w/ IP address:", data[5:])
                     
-                    exists, source = val_in_dict(ipsrc, 0, IDS)
+                    exists, source = val_in_dict(ipsrc, 0, IDs)
                     print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                     print("Encrypted packet is: ", data[9:])
                     if protocol == 1:
@@ -148,6 +148,17 @@ def listen_for_messages(conn):
             exit_flag = True
             break
 
+def send_arp_request(conn):
+    dest = input("what IP are we looking for?\n")
+    # node = IDs[dest]
+    # print("dest:", dest)
+    dest_int = int(dest,16)
+    # print("int_dest", int_dest)
+    print("sending ARP request")
+    message = str(dest_int).encode('utf-8')
+    packet = create_packet_key_gen(message, IP, BROADCASTMAC, 2, len(message))
+    conn.sendall(packet)
+
 def send_messages(conn):
     while True:
         message = input("Enter message: \n").encode('utf-8')
@@ -160,7 +171,7 @@ def send_messages(conn):
     proto = input("Choose protocol: \n")
     dest = input("Who do you want to send it to?: \n")
     try:
-        node = IDS[dest]
+        node = IDs[dest]
         # Random String s.t. an adversary would not be able to craft a fake key gen message
         # Unless he knows the secret hardcoded information
         key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
@@ -194,9 +205,11 @@ def send_messages(conn):
         
 def do_actions(conn):
     while not exit_flag: 
-        action = input("What do you want to do?\n 1.Send message\n")
+        action = input("What do you want to do?\n 1.Send message\n 2.Send ARP request\n")
         if action == "1":
             send_messages(conn)
+        elif action == "2":
+            send_arp_request(conn)
         # elif action == "2":
         #     global arp_poisoning 
         #     if arp_poisoning == True:
