@@ -144,10 +144,13 @@ def listen_for_messages(conn):
                         try:
                             key = keys[ipsrc]
                             # key = wrong_key
-                            decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                            print("Plaintext Message: ", decrypted_payload)
+                            if data[9:19] == b'DOS attack':
+                                decrypted_payload = b'DOS attack'
+                            else:
+                                decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                             packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 5, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
                             conn.sendall(packet)
+                            print("Plaintext Message: ", decrypted_payload)
                         except KeyError:
                             print(ipsrc, type(ipsrc))
                             print("Key not found")
