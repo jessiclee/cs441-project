@@ -243,9 +243,9 @@ def dos_attack(conn, target, attack_limit, final=False):
 def do_actions(conn):
     global attack_performed
     while not exit_flag: 
-        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. start ARP poisoning\n 5. Send arp poision to router\n"
+        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Send arp poision to router\n"
         if not attack_performed["N1"] or not attack_performed["N3"]:
-            prompt +=  " 6. Perform DOS attack\n"
+            prompt +=  "5. Perform DOS attack\n"
         action = input(prompt)
         if action == "1" or action == '2':
             send_messages(conn, action)
@@ -267,22 +267,22 @@ def do_actions(conn):
                 elif option == "2" and SNIFF == False:
                     print("Sniffing already stopped")
                     continue
+        # elif action == "4":
+        #     global ARP_poisoning
+        #     if ARP_poisoning == False:
+        #         print("ARP poisoning started")
+        #         ARP_poisoning = True
+        #     else:
+        #         print("ARP poisoning stopped")
+        #         ARP_poisoning = False
         elif action == "4":
-            global ARP_poisoning
-            if ARP_poisoning == False:
-                print("ARP poisoning started")
-                ARP_poisoning = True
-            else:
-                print("ARP poisoning stopped")
-                ARP_poisoning = False
-        elif action == "5":
             global poisoned_router
             poisoned_router = True
             packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, BROADCASTMAC, 3, 5) #this is packet to router from "N3"
             # packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, b'N2', 3, 5) #this is packet to router from "N3"
             print("pretend to be N3, send modified gratuitious arp")
             conn.sendall(packet)
-        elif action == "6":
+        elif action == "5":
             target = str(input("Enter target (N1/N3): "))
             if not (target == "N1" or target == "N3"):
                 print("Error: Invalid target")

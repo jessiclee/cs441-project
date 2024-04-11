@@ -108,8 +108,8 @@ def listen_for_messages(conn):
                     print(f"Dropping packet as sender is in blocked list {k}")
                     continue
                 elif macdst == BROADCASTMAC and protocol == 3:
-                    print("Received gratitous ARP from ",hex(ipsrc))                
-                    print("IDs table before:", IDs)
+                    # print("Received gratitous ARP from ",hex(ipsrc))                
+                    # print("IDs table before:", IDs)
                     for node, (ip, mac) in IDs.items():
                         # Check if the MAC address matches the target MAC
                         if ip == ipsrc:
@@ -118,7 +118,7 @@ def listen_for_messages(conn):
                             IDs[node] = (ipsrc, b"N2") #hardcoded slightly  
                             break  
                     # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
-                    print("IDs table after:", IDs)
+                    # print("IDs table after:", IDs)
                     arp_poisoned = True
                 elif macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
