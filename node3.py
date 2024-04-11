@@ -27,6 +27,7 @@ keys = {
     0x1A: b'}1I\xf0\xc3l\xbe\xc3\xf9_\xd1\x00\xe9\xbf\x01\x9b\x9e\xaa\x04!\x01\xaeP\x8b\xf8\xc4\x05h\xba\xb8>W',
     0x2A: b'\xf4\x9e\xf7~T\xc3P^\xa4\n\xe8\xbb]\xe1\x97\xe3\xa4\x1cf6U\xf0=\xe2\x15\xcc\xd8\xf1\xe8\x14\xaa\xcd'
 }
+arp_poisoned = False
 
 
 def create_packet(message, ipdest, mac, protocol, length, key):
@@ -76,7 +77,9 @@ def listen_for_messages(conn):
     while True:
         try:
             data = conn.recv(1024)
-            if data[9:] == b'N3:Zq6,eS2yN%sUTF)k':
+            if data[9:] == b'N3:Zq6,eS2yN%sUTF)k' and arp_poisoned is True:
+                pass
+            elif data[9:] == b'N3:Zq6,eS2yN%sUTF)k':
                 time.sleep(2)
                 append_to_txt(secrets.token_hex(16))
                 key = ipsec.generate_key()
@@ -116,6 +119,7 @@ def listen_for_messages(conn):
                             break  
                     # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
                     print("IDs table after:", IDs)
+                    arp_poisoned = True
                 elif macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
                     print("\nPacket w/ IP address:", data[5:])
