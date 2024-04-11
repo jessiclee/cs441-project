@@ -105,7 +105,7 @@ def listen_for_messages(conn):
                 pass
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-                print("macdst is:", macdst)
+                # print("macdst is:", macdst)
                 if macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
                     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
@@ -230,7 +230,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     listener_thread.start()
 
     #thread to send messages
-    sending_thread = threading.Thread(target=do_actions, args=(s,), daemon=True)
+    sending_thread = threading.Thread(target=send_messages, args=(s,), daemon=True)
     sending_thread.start()
 
     #main function to keep it running until it is killed

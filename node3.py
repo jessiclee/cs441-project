@@ -111,7 +111,8 @@ def listen_for_messages(conn):
                         # Check if the MAC address matches the target MAC
                         if ip == ipsrc:
                             # Update the MAC address for N3 to N1
-                            IDs[node] = (ipsrc, b"R2") #hardcoded slightly
+                            # IDs[node] = (ipsrc, b"R2") #hardcoded slightly
+                            IDs[node] = (ipsrc, b"N2") #hardcoded slightly  
                             break  
                     # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
                     print("IDs table after:", IDs)

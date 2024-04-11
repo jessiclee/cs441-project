@@ -276,6 +276,7 @@ def do_actions(conn):
                 ARP_poisoning = False
         elif action == "5":
             packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, BROADCASTMAC, 3, 5) #this is packet to router from "N3"
+            # packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, b'N2', 3, 5) #this is packet to router from "N3"
             print("pretend to be N3, send the following message:")
             conn.sendall(packet)
         elif action == "6":
