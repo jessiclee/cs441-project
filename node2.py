@@ -243,7 +243,7 @@ def dos_attack(conn, target, attack_limit, final=False):
 def do_actions(conn):
     global attack_performed
     while not exit_flag: 
-        prompt = "Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Send ARP poision to router\n"
+        prompt = "Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Send ARP poison to router\n"
         if not attack_performed["N1"] or not attack_performed["N3"]:
             prompt += " 5. Perform DOS attack\n"
         action = input(prompt)
@@ -290,6 +290,7 @@ def do_actions(conn):
                 print("Error: Node has already been attacked")
             else:
                 try:
+                    global attack_num
                     attack_limit = int(input("Enter number of packets to send: "))
                     thread_count = int(input("Enter number of threads to create: "))
                     for i in range(thread_count):
@@ -303,6 +304,7 @@ def do_actions(conn):
                     dos_attack(conn, target, attack_limit, True)
                     print("DOS attack complete")
                     attack_performed[target] = True
+                    attack_num = 0
                 except ValueError:
                     print("Error: Invalid input, please enter an integer")
         else:
