@@ -117,12 +117,10 @@ def listen_for_messages(conn):
                 if macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
                     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    
                     print("\n Packet w/ IP address:", data[5:])
-                    
+                    print("\nEncrypted packet is: ", data[9:])
                     exists, source = val_in_dict(ipsrc, 0, IDs)
-                    print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
-                    print("Encrypted packet is: ", data[9:])
+                    print("\nReceived message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                     if protocol == 1:
                         exit_flag = True
                         break
@@ -133,9 +131,9 @@ def listen_for_messages(conn):
                                 decrypted_payload = b'DOS attack'
                             else:
                                 decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                                print("Plaintext Message: ", decrypted_payload)
                                 packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
                                 conn.sendall(packet)
+                            print("Plaintext Message: ", decrypted_payload)
                         except KeyError:
                             print("Key not found")
                 else:

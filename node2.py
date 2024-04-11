@@ -129,11 +129,13 @@ def listen_for_messages(conn):
                 if macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
                     
+                    print("\nPacket w/ IP address:", data[5:])
+                    print("\nEncrypted packet is: ", data[9:])
+
                     exists, source = val_in_dict(ipsrc, 0, IDS)
-                    print("Received message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
+                    print("\nReceived message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    print("\n Packet w/ IP address:", data[5:])
-                    print("Encrypted packet is: ", data[9:])
+                    
                     if protocol == 1:
                         exit_flag = True
                         break
