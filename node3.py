@@ -125,12 +125,16 @@ def listen_for_messages(conn):
                     print("\n Packet w/ MAC address:", data)
                     print("\nPacket w/ IP address:", data[5:])
                     print("\nEncrypted Packet is: ", data[9:], "\n")
-                    try: 
+                    
+                    try:
                         key = keys[ipsrc]
-                        decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                        print("Plaintext Message: ", decrypted_payload)
+                        if data[9:19] == b'DOS attack':
+                            decrypted_payload = b'DOS attack'
+                        else: 
+                            decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                     except KeyError:
                         print("Key not found")
+                    print("Plaintext Message: ", decrypted_payload)
                     if protocol == 1:
                         exit_flag = True
                         break

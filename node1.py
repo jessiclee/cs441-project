@@ -114,14 +114,14 @@ def listen_for_messages(conn):
                     exists, source = val_in_dict(ipsrc, 0, IDs)
                     print("\nReceived message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                     
-                    if data[9:19] == b'DOS attack':
-                        decrypted_payload = b'DOS attack'
-                    else: 
-                        try: 
-                            key = keys[ipsrc]
+                    try:
+                        key = keys[ipsrc]
+                        if data[9:19] == b'DOS attack':
+                            decrypted_payload = b'DOS attack'
+                        else: 
                             decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                        except KeyError:
-                            print("Key not found")
+                    except KeyError:
+                        print("Key not found")
                     print("Plaintext Message: ", decrypted_payload)
                     if protocol == 1:
                         exit_flag = True
