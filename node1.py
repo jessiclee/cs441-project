@@ -19,7 +19,6 @@ IP = 0x1A
 MAC = b"N1"
 MAX_LEN = 256
 exit_flag = False
-# arp_poisoning = False
 
 BROADCASTMAC = b"FF"
 
@@ -67,26 +66,11 @@ def val_in_dict(val,pos, diction):
 
 def listen_for_messages(conn):
     global exit_flag
-    # global arp_poisoning
     while True:
         try:
             data = conn.recv(1024)
-            # if macdst == MAC:
-            #     print("received message from: ", macsrc, " unpack ip packet...")
-            #     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            #     print("message is:", data[9:])
-            #     if protocol == 1:
-            #         exit_flag = True
-            #         break
-            #     elif protocol == 0:
-            #         packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
-            #         print("proto 0, sending back")
-            #         conn.sendall(packet)
-            # elif macdst == BROADCASTMAC and protocol == 2:
-            #     print("received ARP request from: ", hex(ipsrc), "asking for :", hex(ipdst) )
             if data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
                 time.sleep(2)
-                # ipsec.set_input(secrets.token_hex(16))
                 append_to_txt(secrets.token_hex(16))
                 key = ipsec.generate_key()
                 print("Current Key is: ", key)
@@ -105,7 +89,6 @@ def listen_for_messages(conn):
                 pass
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-                # print("macdst is:", macdst)
                 if macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
                     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
@@ -140,11 +123,8 @@ def listen_for_messages(conn):
             break
 
 def send_arp_request(conn):
-    dest = input("What IP are we looking for? ")
-    # node = IDs[dest]
-    # print("dest:", dest)
+    dest = input("Enter IP to look for: \n")
     dest_int = int(dest,16)
-    # print("int_dest", int_dest)
     print("Sending ARP request")
     message = str(dest_int).encode('utf-8')
     packet = create_packet_key_gen(message, IP, BROADCASTMAC, 2, len(message))
@@ -194,13 +174,6 @@ def send_messages(conn):
             # Send the actual packet
             packet = create_packet(message, node[0], node[1], int(proto), length, key)
             conn.sendall(packet)
-            # Update key
-            # key = keys[node[0]]
-            # if key:
-            #     packet = create_packet(message, node[0], node[1], int(proto), length, key)
-            #     conn.sendall(packet)
-            # if not key:
-            #     print("Key not found")
         except KeyError:
             print("Error: Sender not found")
             pass
@@ -208,15 +181,15 @@ def send_messages(conn):
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
     
-    #thread to listen for messages
+    # Thread to listen for messages
     listener_thread = threading.Thread(target=listen_for_messages, args=(s,), daemon=True)
     listener_thread.start()
 
-    #thread to send messages
+    # Thread to send messages
     sending_thread = threading.Thread(target=send_messages, args=(s,), daemon=True)
     sending_thread.start()
 
-    #main function to keep it running until it is killed
+    # Main function to keep it running until it is killed
     while not exit_flag:
         continue
 

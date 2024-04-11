@@ -15,7 +15,6 @@ IDS = {
 HOST = "localhost"  # Standard loopback interface address (localhost)
 PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
 IP = 0x2A
-# IP2 = 0x21
 MAC = b"N2"
 MAX_LEN = 256
 SNIFF = False
@@ -34,12 +33,6 @@ attack_performed = {
 }
 
 BROADCASTMAC = b"FF"
-
-# def create_packet(message, ipsrc, ipdest, mac, protocol, length):
-#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
-#     print("ip pack created:", ippack)
-#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-#     return packet
 
 def create_packet(message, ipsrc, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
@@ -86,25 +79,6 @@ def listen_for_messages(conn):
     while True:
         try:
             data = conn.recv(1024)
-            # macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-            # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            # if macdst == MAC:
-            #     print("received message from: ", macsrc, " unpack ip packet...")
-            #     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            #     print("message is:", data[9:])
-            #     if protocol == 1:
-            #         exit_flag = True 
-            #         break
-            #     elif protocol == 0:
-            #         # print(macsrc)
-            #         packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
-            #         print("proto 0, sending back")
-            #         conn.sendall(packet)
-            # elif macdst == BROADCASTMAC and protocol == 2:
-            #     print("received ARP request from: ", hex(ipsrc), "asking for :", hex(ipdst) )
-            # elif ipdst == IDS["N3"][0] and SNIFF == True:
-            #     print("Intercepted traffic from",macsrc, "to", macdst)
-            #     print("message is:", data[9:])
             if (data[9:] == b"N2:Zq6,eS2yN%sUTF)k") or (data[9:] == b"N3:Zq6,eS2yN%sUTF)k" and poisoned_router):
                 time.sleep(2)
                 append_to_txt(secrets.token_hex(16))
@@ -121,12 +95,11 @@ def listen_for_messages(conn):
                 # Revert CSV to a clean state
                 ipsec.clean_csv()
             elif data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
-                # Do noting because the key is not theirs
+                # Do nothing because the key is not theirs
                 pass
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                # print(ipsrc, ipdst, protocol, len)
                 if macdst == MAC:
                     print("\nPacket w/ MAC address:", data)
                     
@@ -135,8 +108,7 @@ def listen_for_messages(conn):
 
                     exists, source = val_in_dict(ipsrc, 0, IDS)
                     print("\nReceived message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
-                    # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    
+                              
                     try:
                         key = keys[ipsrc]
                         if data[9:19] == b'DOS attack':
@@ -150,15 +122,14 @@ def listen_for_messages(conn):
                         exit_flag = True
                         break
                     elif protocol == 0:
-                        packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 5, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
+                        packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 5, len, key) 
                         conn.sendall(packet)
                 elif macdst == BROADCASTMAC and protocol == 2 and ARP_poisoning == True:
                     print ("Detected ARP message from", hex(ipsrc), "\t Asking for: ", data[9:])
                     time.sleep(2)
                     print("Sending gratitous ARP\n")
                     message = "it me".encode('utf-8')
-                    # packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node
-                    packet = create_packet_key_gen(message, int(data[9:]), ipsrc, BROADCASTMAC, 3, 5) #this is packet to router from "N3"
+                    packet = create_packet_key_gen(message, int(data[9:]), ipsrc, BROADCASTMAC, 3, 5) 
                     conn.sendall(packet)
                 elif ipdst == IDS["N3"][0] and SNIFF == True:
                     print("Intercepted traffic from", macsrc, "to", macdst)
@@ -219,7 +190,6 @@ def send_messages(conn,action):
         # Update Key in the Dictionary
         keys[node[0]] = key
         
-        # packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length)
         packet = create_packet(message, ipsrc, node[0], node[1], int(proto), length, key)
         conn.sendall(packet)
     except KeyError:
@@ -268,19 +238,10 @@ def do_actions(conn):
                 elif option == "2" and SNIFF == False:
                     print("Sniffing already stopped")
                     continue
-        # elif action == "4":
-        #     global ARP_poisoning
-        #     if ARP_poisoning == False:
-        #         print("ARP poisoning started")
-        #         ARP_poisoning = True
-        #     else:
-        #         print("ARP poisoning stopped")
-        #         ARP_poisoning = False
         elif action == "4":
             global poisoned_router
             poisoned_router = True
-            packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, BROADCASTMAC, 3, 5) #this is packet to router from "N3"
-            # packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, b'N2', 3, 5) #this is packet to router from "N3"
+            packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, BROADCASTMAC, 3, 5)
             print("pretend to be N3, send modified gratuitious arp")
             conn.sendall(packet)
         elif action == "5":
@@ -300,7 +261,8 @@ def do_actions(conn):
                     while attack_num < attack_limit:
                         pass
                     
-                    time.sleep(1) # delay for threads to complete running
+                    # Delay for threads to complete running
+                    time.sleep(1) 
                     
                     dos_attack(conn, target, attack_limit, True)
                     print("DOS attack complete")
@@ -314,15 +276,15 @@ def do_actions(conn):
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
     
-    #thread to listen for messages
+    # Thread to listen for messages
     listener_thread = threading.Thread(target=listen_for_messages, args=(s,), daemon=True)
     listener_thread.start()
 
-    #thread to send messages
+    # Thread to send messages
     sending_thread = threading.Thread(target=do_actions, args=(s,), daemon=True)
     sending_thread.start()
 
-    #main function to keep it running until it is killed
+    # Main function to keep it running until it is killed
     while not exit_flag:
         continue
 

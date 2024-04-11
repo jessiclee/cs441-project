@@ -16,7 +16,7 @@ BLOCKed = {}
 
 BROADCASTMAC = b"FF"
 
-HOST = "localhost"  # Standard loopback interface address (localhost) *172.0.1.0 doesn't work for me
+HOST = "localhost" # Standard loopback interface address (localhost) 
 PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
 IP = 0x2B
 MAC = b"N3"
@@ -43,12 +43,6 @@ def create_packet_key_gen(message, ipdest, mac, protocol, length):
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
     return packet
-
-# def create_packet(message, ipsrc, ipdest, mac, protocol, length):
-#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
-#     print("ip pack created:", ippack)
-#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-#     return packet
 
 def append_to_txt(data):
     try:
@@ -99,7 +93,7 @@ def listen_for_messages(conn):
                 # Revert CSV to a clean state
                 ipsec.clean_csv()
             elif data[9:] == b'N2:Zq6,eS2yN%sUTF)k' or data[9:] == b'N1:Zq6,eS2yN%sUTF)k':
-                # Do noting because the key is not theirs
+                # Do nothing because the key is not theirs
                 pass
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
@@ -109,17 +103,12 @@ def listen_for_messages(conn):
                     print(f"Dropping packet as sender is in blocked list {k}")
                     continue
                 elif macdst == BROADCASTMAC and protocol == 3:
-                    # print("Received gratitous ARP from ",hex(ipsrc))                
-                    # print("IDs table before:", IDs)
                     for node, (ip, mac) in IDs.items():
                         # Check if the MAC address matches the target MAC
                         if ip == ipsrc:
                             # Update the MAC address for N3 to N1
-                            # IDs[node] = (ipsrc, b"R2") #hardcoded slightly
-                            IDs[node] = (ipsrc, b"N2") #hardcoded slightly  
+                            IDs[node] = (ipsrc, b"N2") 
                             break  
-                    # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
-                    # print("IDs table after:", IDs)
                     arp_poisoned = True
                 elif macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
@@ -212,9 +201,9 @@ def manage_firewall():
         elif choice == '1':
             choice2 = input("Enter source to block: ")
             if choice2 in IDs:
-                #remove it from the recieving list
+                # Remove from receiving list
                 info = IDs.pop(choice2)
-                #enter it into block list
+                # Add to block list
                 BLOCKed[choice2] = (info[0], info[1])
                 print("Updated block list")
                 print(BLOCKed)
@@ -225,9 +214,9 @@ def manage_firewall():
         elif choice == '2':
             choice2 = input("Enter source to unblock: ")
             if choice2 in BLOCKed:
-                #remove it from the blocklist
+                # Remove from block list
                 info = BLOCKed.pop(choice2)
-                #enter it to normal list
+                # Add to receiving list
                 IDs[choice2] = (info[0], info[1])
                 print("Updated block list")
                 print(BLOCKed)
@@ -239,12 +228,9 @@ def manage_firewall():
             print("Error: Invalid choice")
         
 def send_arp_request(conn):
-    dest = input("what IP are we looking for? (1A/2A)?\n")
-    # node = IDs[dest]
-    # print("dest:", dest)
+    dest = input("Enter IP to look for (1A/2A):\n")
     dest_int = int(dest,16)
-    # print("int_dest", int_dest)
-    print("sending ARP request")
+    print("Sending ARP request")
     message = str(dest_int).encode('utf-8')
     packet = create_packet_key_gen(message, IP, BROADCASTMAC, 2, len(message))
     conn.sendall(packet)
@@ -265,15 +251,15 @@ def do_actions(conn):
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
     
-    #thread to listen for messages
+    # Thread to listen for messages
     listener_thread = threading.Thread(target=listen_for_messages, args=(s,), daemon=True)
     listener_thread.start()
 
-    #thread to send messages
+    # Thread to send messages
     sending_thread = threading.Thread(target=do_actions, args=(s,), daemon=True)
     sending_thread.start()
 
-    #main function to keep it running until it is killed
+    # Main function to keep it running until it is killed
     while not exit_flag:
         continue
 

@@ -31,8 +31,6 @@ s1.listen()
 s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 s2.bind((HOST2, PORT2))
 s2.listen()
-# s.listen()
-# conn, addr = s.accept()
 n1 = None
 n2 = None
 n3 = None
@@ -47,7 +45,7 @@ def local_broadcast(data):
     n3.sendall(data)
 
 def broadcast(data):
-    print("sending broadcast: ", data)
+    print("Sending broadcast: ", data)
     n1.sendall(data)
     n2.sendall(data)
     n3.sendall(data)
@@ -58,17 +56,16 @@ def handle_ip_packet(data, macsrc, local):
         if local == 1:
             dstmac = R1_IDs[ipdst]
             pack = create_ether_frame(data, MAC1, dstmac, len)
-            print("sending1: ", pack)
+            print("Sending1: ", pack)
             n1.sendall(pack)
         elif local == 2:
             dstmac = R2_IDs[ipdst]
             pack = create_ether_frame(data, MAC2, dstmac, len)
-            print("sending2: ", pack)
-            #emulate ethernet broadcast, send to all?
+            print("Sending2: ", pack)
             n2.sendall(pack)
             n3.sendall(pack)
     except KeyError:
-        print(f"something went wrong: ipdst {ipdst} ipsrc {ipsrc} local{local}")
+        print(f"Something went wrong: ipdst {ipdst} ipsrc {ipsrc} local{local}")
         print(R1_IDs)
         print(R2_IDs)
 
@@ -78,7 +75,7 @@ def receive_packets(interface_socket):
             data = interface_socket.recv(1024)
             if not data:
                 break
-            #unpack ethernet frame and check destination MAC to know which interface to forward to
+            # Unpack ethernet frame and check destination MAC to know which interface to forward to
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
             ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
             print(f"Received packet from {macsrc}: {data}\n")
@@ -88,34 +85,34 @@ def receive_packets(interface_socket):
                 if protocol == 2: 
                     print("ARP request from: ", hex(ipsrc), " searching for :", data[9:])
                 elif protocol == 3:
-                    print("gratitous arp, ",hex(ipsrc), " is now associated with macsrc: ", macsrc)
+                    print("Gratitous ARP: ", hex(ipsrc), " is now associated with macsrc: ", macsrc)
                     if ipsrc in R1_IDs:
-                        print("R1 table before: ",R1_IDs)
+                        print("R1 table before: ", R1_IDs)
                         # Update the MAC address for N3 to N1
-                        R1_IDs[ipsrc] = macsrc #hardcode
-                        print("R1 table after: ",R1_IDs)
+                        R1_IDs[ipsrc] = macsrc 
+                        print("R1 table after: ", R1_IDs)
                     elif ipsrc in R2_IDs:
-                        print("R2 table before: ",R2_IDs)
+                        print("R2 table before: ", R2_IDs)
                         # Update the MAC address for N3 to N2
-                        R2_IDs[ipsrc] = macsrc #hardcode
-                        print("R2 table after: ",R2_IDs)
+                        R2_IDs[ipsrc] = macsrc 
+                        print("R2 table after: ", R2_IDs)
             elif macdst == MAC1:
                 threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 2)).start()
             elif macdst == MAC2:
                 threading.Thread(target=handle_ip_packet, args=(data[5:], macsrc, 1)).start()
             elif macdst in R2_IDs.values():
-                print("sending local broadcast\n")
+                print("Sending local broadcast\n")
                 threading.Thread(target=local_broadcast, args=(data, )).start()
             
         except ConnectionResetError:
-            print("connection closed")
+            print("Error: Connection closed")
             break
 
 while (n1 == None):
     client, address = s1.accept()
     n1 = client
     # print(n1)
-    print(f"Connected Node1 through {address}")
+    print(f"Connected Node 1 through {address}")
     threading.Thread(target=receive_packets, args=(n1,), daemon=True).start()
 
 while (n2 == None or n3 == None):
@@ -124,12 +121,12 @@ while (n2 == None or n3 == None):
         n2 = client
         # print(n2)
         threading.Thread(target=receive_packets, args=(n2,), daemon=True).start()
-        print(f"Connected Node2 through {address}")
+        print(f"Connected Node 2 through {address}")
     elif(n3 == None):
         n3 = client
         # print(n3)
         threading.Thread(target=receive_packets, args=(n3,), daemon=True).start()
-        print(f"Connected Node3 through {address}")
+        print(f"Connected Node 3 through {address}")
 
 
 while msg == None:
