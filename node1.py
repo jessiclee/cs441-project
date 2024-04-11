@@ -33,9 +33,9 @@ def create_packet(message, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
     print("\nEncrypted Packet:", esp_packet)
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
-    print("IP Packet w/ Encrypted Packet:", ippack)
+    print("\nIP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    print("Final Packet w/ MAC address:", packet , "\n")
+    print("\nFinal Packet w/ MAC address:", packet , "\n")
     return packet
 
 # def create_packet(message, ipsrc, ipdest, mac, protocol, length):
