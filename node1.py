@@ -203,24 +203,6 @@ def send_messages(conn):
         except KeyError:
             print("Error: Sender not found")
             pass
-        
-def do_actions(conn):
-    while not exit_flag: 
-        action = input("What do you want to do?\n 1.Send message\n 2.Send ARP request\n")
-        if action == "1":
-            send_messages(conn)
-        elif action == "2":
-            send_arp_request(conn)
-        # elif action == "2":
-        #     global arp_poisoning 
-        #     if arp_poisoning == True:
-        #         print("arp poisoning stopped\n")
-        #         arp_poisoning = False
-        #     else:
-        #         print("arp poisoning started\n")
-        #         arp_poisoning = True 
-        else:
-            print("invalid choice!")
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
