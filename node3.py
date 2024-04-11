@@ -125,7 +125,7 @@ def listen_for_messages(conn):
                     print("\n Packet w/ MAC address:", data)
                     print("\nPacket w/ IP address:", data[5:])
                     print("\nEncrypted Packet is: ", data[9:], "\n")
-                    
+                    print("\nReceived message with IP address ", ipsrc, "destination ip", ipdst, " and MAC address:", macsrc)
                     try:
                         key = keys[ipsrc]
                         if data[9:19] == b'DOS attack':
