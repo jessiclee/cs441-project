@@ -136,21 +136,18 @@ def listen_for_messages(conn):
                     exists, source = val_in_dict(ipsrc, 0, IDS)
                     print("\nReceived message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
                     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-                    
+                    try: 
+                        key = keys[ipsrc]
+                        decrypted_payload = ipsec.decrypt_packet(data[9:], key)
+                        print("Plaintext Message: ", decrypted_payload)
+                    except KeyError:
+                        print("Key not found")
                     if protocol == 1:
                         exit_flag = True
                         break
                     elif protocol == 0:
-                        try:
-                            key = keys[ipsrc]
-                            # key = wrong_key
-                            decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                            print("Plaintext Message: ", decrypted_payload)
-                            packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 5, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
-                            conn.sendall(packet)
-                        except KeyError:
-                            print(ipsrc, type(ipsrc))
-                            print("Key not found")
+                        packet = create_packet(decrypted_payload, ipdst, ipsrc, macsrc, 5, len, key)  # 3 is hardcoded bc if 1 it will ping to everyone
+                        conn.sendall(packet)
                 elif macdst == BROADCASTMAC and protocol == 2 and ARP_poisoning == True:
                     print ("Detected ARP message from", hex(ipsrc), "\t Asking for: ", data[9:])
                     time.sleep(2)

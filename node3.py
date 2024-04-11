@@ -125,18 +125,18 @@ def listen_for_messages(conn):
                     print("\n Packet w/ MAC address:", data)
                     print("\nPacket w/ IP address:", data[5:])
                     print("\nEncrypted Packet is: ", data[9:], "\n")
+                    try: 
+                        key = keys[ipsrc]
+                        decrypted_payload = ipsec.decrypt_packet(data[9:], key)
+                        print("Plaintext Message: ", decrypted_payload)
+                    except KeyError:
+                        print("Key not found")
                     if protocol == 1:
                         exit_flag = True
                         break
                     elif protocol == 0:
-                        try:
-                            key = keys[ipsrc]
-                            decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                            print("Plaintext Message: ", decrypted_payload)
-                            packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
-                            conn.sendall(packet)
-                        except KeyError:
-                            print("Key not found")
+                        packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
+                        conn.sendall(packet)
                 else:
                     print("Received message is for ", macdst, " from ", macsrc)
                     print("Dropping packet")

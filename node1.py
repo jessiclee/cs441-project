@@ -113,21 +113,22 @@ def listen_for_messages(conn):
                     print("\nEncrypted packet is: ", data[9:])
                     exists, source = val_in_dict(ipsrc, 0, IDs)
                     print("\nReceived message from: ", source, " with IP address ", ipsrc, " and MAC address:", macsrc)
+                    
+                    if data[9:19] == b'DOS attack':
+                        decrypted_payload = b'DOS attack'
+                    else: 
+                        try: 
+                            key = keys[ipsrc]
+                            decrypted_payload = ipsec.decrypt_packet(data[9:], key)
+                        except KeyError:
+                            print("Key not found")
+                    print("Plaintext Message: ", decrypted_payload)
                     if protocol == 1:
                         exit_flag = True
                         break
                     elif protocol == 0:
-                        try:
-                            key = keys[ipsrc]
-                            if data[9:19] == b'DOS attack':
-                                decrypted_payload = b'DOS attack'
-                            else:
-                                decrypted_payload = ipsec.decrypt_packet(data[9:], key)
-                                packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
-                                conn.sendall(packet)
-                            print("Plaintext Message: ", decrypted_payload)
-                        except KeyError:
-                            print("Key not found")
+                        packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
+                        conn.sendall(packet)
                 else:
                         print("Received message is for: ", macdst, " from ", macsrc)
                         print("Dropping packet")
