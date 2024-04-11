@@ -74,6 +74,7 @@ def val_in_dict(val,pos, diction):
 
 def listen_for_messages(conn):
     global exit_flag
+    global arp_poisoned
     while True:
         try:
             data = conn.recv(1024)
