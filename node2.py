@@ -21,6 +21,7 @@ MAX_LEN = 256
 SNIFF = False
 ARP_poisoning = False
 exit_flag = False
+poisoned_router = False
 wrong_key = b'\xd8c\xa6\xdd\r\xf5@\xd6&Y\x96\xc1\xd0\xf6d\x87\xe81\x07\x0c\xde\xbbN"\xa4\xf3\x9c\x83\x9d5t3'
 keys = {
     0x1A: b'\xed\x08\xb6a\x02\xd9\xd8\xf9\xa4\xba\xac\x90\xa7\xfb!9\xaa\x93C\xbb\xec\x16\xf6m\tS\xabq\xe714\x1a',
@@ -104,7 +105,7 @@ def listen_for_messages(conn):
             # elif ipdst == IDS["N3"][0] and SNIFF == True:
             #     print("Intercepted traffic from",macsrc, "to", macdst)
             #     print("message is:", data[9:])
-            if data[9:] == b"N2:Zq6,eS2yN%sUTF)k":
+            if (data[9:] == b"N2:Zq6,eS2yN%sUTF)k") or (data[9:] == b"N3:Zq6,eS2yN%sUTF)k" and poisoned_router):
                 time.sleep(2)
                 append_to_txt(secrets.token_hex(16))
                 key = ipsec.generate_key()
@@ -119,7 +120,7 @@ def listen_for_messages(conn):
                 
                 # Revert CSV to a clean state
                 ipsec.clean_csv()
-            elif data[9:] == b"N1:Zq6,eS2yN%sUTF)k" or data[9:] == b"N3:Zq6,eS2yN%sUTF)k":
+            elif data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
                 # Do noting because the key is not theirs
                 pass
             else:
@@ -275,9 +276,11 @@ def do_actions(conn):
                 print("ARP poisoning stopped")
                 ARP_poisoning = False
         elif action == "5":
+            global poisoned_router
+            poisoned_router = True
             packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, BROADCASTMAC, 3, 5) #this is packet to router from "N3"
             # packet = create_packet_key_gen("it me".encode('utf-8'), IDS["N3"][0], 0x21, b'N2', 3, 5) #this is packet to router from "N3"
-            print("pretend to be N3, send the following message:")
+            print("pretend to be N3, send modified gratuitious arp")
             conn.sendall(packet)
         elif action == "6":
             target = str(input("Enter target (N1/N3): "))
