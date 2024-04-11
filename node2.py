@@ -243,9 +243,9 @@ def dos_attack(conn, target, attack_limit, final=False):
 def do_actions(conn):
     global attack_performed
     while not exit_flag: 
-        prompt = "\nSelect action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Send arp poision to router\n"
+        prompt = "Select action:\n 1. Send message\n 2. Send a spoofed message\n 3. Configure sniffing\n 4. Send ARP poision to router\n"
         if not attack_performed["N1"] or not attack_performed["N3"]:
-            prompt +=  "5. Perform DOS attack\n"
+            prompt += " 5. Perform DOS attack\n"
         action = input(prompt)
         if action == "1" or action == '2':
             send_messages(conn, action)
