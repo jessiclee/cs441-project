@@ -38,12 +38,6 @@ def create_packet(message, ipdest, mac, protocol, length, key):
     print("Final Packet w/ MAC address:", packet , "\n")
     return packet
 
-# def create_packet(message, ipsrc, ipdest, mac, protocol, length):
-#     ippack = struct.pack('!BBBB', ipsrc, ipdest, protocol, length) + message
-#     print("ip pack created:", ippack)
-#     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-#     return packet
-
 def create_packet_key_gen(message, ipdest, mac, protocol, length):
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + message
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
@@ -79,20 +73,6 @@ def listen_for_messages(conn):
             data = conn.recv(1024)
             macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
             ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            print("macdst is:", macdst)
-            # if macdst == MAC:
-            #     print("received message from: ", macsrc, " unpack ip packet...")
-            #     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            #     print("message is:", data[9:])
-            #     if protocol == 1:
-            #         exit_flag = True
-            #         break
-            #     elif protocol == 0:
-            #         packet = create_packet(data[9:], ipdst, ipsrc, macsrc, 5, len)
-            #         print("proto 0, sending back")
-            #         conn.sendall(packet)
-            # elif macdst == BROADCASTMAC and protocol == 2:
-            #     print("received ARP request from: ", hex(ipsrc), "asking for :", hex(ipdst) )
             if data[9:] == b"N1:Zq6,eS2yN%sUTF)k":
                 time.sleep(2)
                 # ipsec.set_input(secrets.token_hex(16))
@@ -149,59 +129,70 @@ def listen_for_messages(conn):
             break
 
 def send_arp_request(conn):
-    dest = input("what IP are we looking for?\n")
+    dest = input("What IP are we looking for? ")
     # node = IDs[dest]
     # print("dest:", dest)
     dest_int = int(dest,16)
     # print("int_dest", int_dest)
-    print("sending ARP request")
+    print("Sending ARP request")
     message = str(dest_int).encode('utf-8')
     packet = create_packet_key_gen(message, IP, BROADCASTMAC, 2, len(message))
     conn.sendall(packet)
 
 def send_messages(conn):
-    while True:
-        message = input("Enter message: \n").encode('utf-8')
-        length = len(message)
-        print(length)
-        if length > MAX_LEN:
-            print ("message too long, needs to be less than" + MAX_LEN + "try again!")
-        else:
-            break
-    proto = input("Choose protocol: \n")
-    dest = input("Who do you want to send it to?: \n")
-    try:
-        node = IDs[dest]
-        # Random String s.t. an adversary would not be able to craft a fake key gen message
-        # Unless he knows the secret hardcoded information
-        key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
-        key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), node[0], node[1], int(proto), length)
-        conn.sendall(key_gen_packet)
-        
-        # Contribute in the key generation after that
-        append_to_txt(secrets.token_hex(16))
-        time.sleep(2)
-        key = ipsec.generate_key()
-        
-        # To check if the key is different everytime
-        print("Current Key is: ", key)
-        
-        # Update Key in the Dictionary
-        keys[node[0]] = key
-        
-        # Send the actual packet
-        packet = create_packet(message, node[0], node[1], int(proto), length, key)
-        conn.sendall(packet)
-        # Update key
-        # key = keys[node[0]]
-        # if key:
-        #     packet = create_packet(message, node[0], node[1], int(proto), length, key)
-        #     conn.sendall(packet)
-        # if not key:
-        #     print("Key not found")
-    except KeyError:
-        print("Error: Sender not found")
-        pass
+    while not exit_flag:
+        while True:
+            message = input("Enter message: ").encode('utf-8')
+            length = len(message)
+            if length > MAX_LEN:
+                print ("Please input a message within the character limit " + MAX_LEN)
+            else:
+                break
+        while True:
+            proto = input("Choose protocol (0/1): ")
+            if (proto == "0" or proto == "1"):
+                break
+            else:
+                print("Please input a valid protocol, 0 (Ping Protocol) or 1 (Kill Protocol)")
+                
+        while True:
+            dest = input("Choose recipient (N2/N3): ")
+            if (dest == "N2" or dest == "N3"):
+                break
+            else:
+                print("Please input a valid node (N2/N3)")
+        try:
+            node = IDs[dest]
+            # Random String s.t. an adversary would not be able to craft a fake key gen message
+            # Unless he knows the secret hardcoded information
+            key_gen_msg = dest + ":" + "Zq6,eS2yN%sUTF)k"
+            key_gen_packet = create_packet_key_gen(key_gen_msg.encode('utf-8'), node[0], node[1], int(proto), length)
+            conn.sendall(key_gen_packet)
+            
+            # Contribute in the key generation after that
+            append_to_txt(secrets.token_hex(16))
+            time.sleep(2)
+            key = ipsec.generate_key()
+            
+            # To check if the key is different everytime
+            print("Current Key is: ", key)
+            
+            # Update Key in the Dictionary
+            keys[node[0]] = key
+            
+            # Send the actual packet
+            packet = create_packet(message, node[0], node[1], int(proto), length, key)
+            conn.sendall(packet)
+            # Update key
+            # key = keys[node[0]]
+            # if key:
+            #     packet = create_packet(message, node[0], node[1], int(proto), length, key)
+            #     conn.sendall(packet)
+            # if not key:
+            #     print("Key not found")
+        except KeyError:
+            print("Error: Sender not found")
+            pass
         
 def do_actions(conn):
     while not exit_flag: 

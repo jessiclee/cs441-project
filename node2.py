@@ -149,9 +149,9 @@ def listen_for_messages(conn):
                             print(ipsrc, type(ipsrc))
                             print("Key not found")
                 elif macdst == BROADCASTMAC and protocol == 2 and ARP_poisoning == True:
-                    print ("detected ARP message from", hex(ipsrc), "asking for: ", data[9:])
+                    print ("Detected ARP message from", hex(ipsrc), "\t Asking for: ", data[9:])
                     time.sleep(2)
-                    print("sending gratitous ARP\n")
+                    print("Sending gratitous ARP\n")
                     message = "it me".encode('utf-8')
                     # packet1 = create_packet(message, ipsrc, ipdst, BROADCASTMAC, 3, 0) # N2 = ipdst, N3 = ipsrc, this is packet to N2 #not real broadcast, manually send since we the ipsrc is diff for each node
                     packet = create_packet_key_gen(message, int(data[9:]), ipsrc, BROADCASTMAC, 3, 5) #this is packet to router from "N3"

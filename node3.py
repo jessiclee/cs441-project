@@ -83,7 +83,7 @@ def listen_for_messages(conn):
                 print("Current Key is: ", key)
                 
                 ## Uncomment here for demo ##
-                key = wrong_key
+                # key = wrong_key
                 
                 # Update Key Dictionary
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
@@ -106,7 +106,7 @@ def listen_for_messages(conn):
                     continue
                 elif macdst == BROADCASTMAC and protocol == 3:
                     print("Received gratitous ARP from ",hex(ipsrc))                
-                    print("ids table before:", IDs)
+                    print("IDs table before:", IDs)
                     for node, (ip, mac) in IDs.items():
                         # Check if the MAC address matches the target MAC
                         if ip == ipsrc:
@@ -114,7 +114,7 @@ def listen_for_messages(conn):
                             IDs[node] = (ipsrc, b"R2") #hardcoded slightly
                             break  
                     # print("updated information: \nip:", hex(ipsrc), "\n MAC:", macsrc)
-                    print("ids table after:", IDs)
+                    print("IDs table after:", IDs)
                 elif macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
                     print("Packet w/ IP address:", data[5:])
