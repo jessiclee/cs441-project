@@ -56,12 +56,12 @@ def handle_ip_packet(data, macsrc, local):
         if local == 1:
             dstmac = R1_IDs[ipdst]
             pack = create_ether_frame(data, MAC1, dstmac, len)
-            print("Sending1: ", pack)
+            print( f"Sending packet through R1 interface to N1 with headers: ipsrc {ipsrc}, ipdst {ipdst} and macsrc {MAC1} macdst {dstmac}" )
             n1.sendall(pack)
         elif local == 2:
             dstmac = R2_IDs[ipdst]
             pack = create_ether_frame(data, MAC2, dstmac, len)
-            print("Sending2: ", pack)
+            print( f"Sending through R2 interface to N2/3 with headers: ipsrc {ipsrc}, ipdst {ipdst} and macsrc {MAC1} macdst {dstmac}")
             n2.sendall(pack)
             n3.sendall(pack)
     except KeyError:
