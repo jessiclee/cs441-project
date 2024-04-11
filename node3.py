@@ -246,7 +246,7 @@ def send_arp_request(conn):
 
 def do_actions(conn):
     while not exit_flag: 
-        action = input("What do you want to do?\n 1.Send message\n 2.Configure firewall\n 3.Send ARP request\n")
+        action = input("Select action: \n 1. Send message\n 2. Configure firewall\n 3. Send ARP request\n")
         if action == "1":
             send_messages(conn)
         elif action == "2":
