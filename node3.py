@@ -33,9 +33,9 @@ def create_packet(message, ipdest, mac, protocol, length, key):
     esp_packet = ipsec.encrypt_payload(message, key)
     print("\nEncrypted Packet:", esp_packet)
     ippack = struct.pack('!BBBB', IP, ipdest, protocol, length) + esp_packet
-    print("IP Packet w/ Encrypted Packet:", ippack)
+    print("\nIP Packet w/ Encrypted Packet:", ippack)
     packet = struct.pack('!2s2sB', MAC, mac, length+4) + ippack
-    print("Final Packet w/ MAC address:", packet, "\n")
+    print("\nFinal Packet w/ MAC address:", packet, "\n")
     return packet
 
 def create_packet_key_gen(message, ipdest, mac, protocol, length):
@@ -117,18 +117,15 @@ def listen_for_messages(conn):
                     print("IDs table after:", IDs)
                 elif macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
-                    print("Packet w/ IP address:", data[5:])
-                    print("Encrypted Packet is: ", data[9:], "\n")
+                    print("\nPacket w/ IP address:", data[5:])
+                    print("\nEncrypted Packet is: ", data[9:], "\n")
                     if protocol == 1:
                         exit_flag = True
                         break
                     elif protocol == 0:
                         try:
                             key = keys[ipsrc]
-                            if data[9:19] == b'DOS attack':
-                                decrypted_payload = b'DOS attack'
-                            else:
-                                decrypted_payload = ipsec.decrypt_packet(data[9:], key)
+                            decrypted_payload = ipsec.decrypt_packet(data[9:], key)
                             print("Plaintext Message: ", decrypted_payload)
                             packet = create_packet(decrypted_payload, ipsrc, macsrc, 5, len, key)
                             conn.sendall(packet)
