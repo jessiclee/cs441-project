@@ -127,7 +127,7 @@ def listen_for_messages(conn):
                 ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
                 # print(ipsrc, ipdst, protocol, len)
                 if macdst == MAC:
-                    print("\n Packet w/ MAC address:", data)
+                    print("\nPacket w/ MAC address:", data)
                     
                     print("\nPacket w/ IP address:", data[5:])
                     print("\nEncrypted packet is: ", data[9:])

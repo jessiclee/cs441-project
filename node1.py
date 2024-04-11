@@ -77,9 +77,6 @@ def listen_for_messages(conn):
     while True:
         try:
             data = conn.recv(1024)
-            macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
-            ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
-            print("macdst is:", macdst)
             # if macdst == MAC:
             #     print("received message from: ", macsrc, " unpack ip packet...")
             #     # ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
@@ -114,6 +111,7 @@ def listen_for_messages(conn):
                 pass
             else:
                 macsrc, macdst, leng = struct.unpack('!2s2sB', data[:5])
+                print("macdst is:", macdst)
                 if macdst == MAC:
                     print("\n Packet w/ MAC address:", data)
                     ipsrc, ipdst, protocol, len = struct.unpack('!BBBB', data[5:9])
